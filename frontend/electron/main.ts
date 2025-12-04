@@ -68,20 +68,19 @@ function createWindow() {
     }
   });
 
-  // Minimize to tray behavior
-  win.on('minimize', (event: any) => {
-    event.preventDefault()
-    win.hide()
+  // 最小化到托盘行为
+  win.on('minimize', () => {
+    if (win) {
+      win.hide()
+    }
   })
 
-  // Close to tray behavior
-  win.on('close', (event: any) => {
-    if (!appWithFlags.isQuitting) {
+  // 关闭到托盘行为（点击关闭按钮时隐藏而不是退出）
+  win.on('close', (event) => {
+    if (!appWithFlags.isQuitting && win) {
       event.preventDefault()
       win.hide()
-      return false
     }
-    return true
   })
 
   win.webContents.setWindowOpenHandler((details) => {
@@ -117,25 +116,36 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   createWindow()
   
-  // Create Tray
-  const iconPath = path.join(process.env.VITE_PUBLIC || '', 'vite.svg')
-  console.log('Creating tray with icon:', iconPath)
-  
+  // 创建托盘图标
+  // Windows 托盘需要合适格式的图标，这里使用 nativeImage 创建
   const { nativeImage } = require('electron')
-  const icon = nativeImage.createFromPath(iconPath)
   
-  tray = new Tray(icon)
+  // 创建一个 32x32 的股票图标（绿色上涨箭头样式）
+  // 这是一个简单但清晰的 PNG 图标 base64
+  const iconBase64 = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGRSURBVFiF7ZY9TsNAEIW/WYcGiQKJgoKWgoqOI3AEjkBJRUVFR8cROAJHoKOipKKgoECiQPyIxGbHBRvFJN7sxnZCwZNW8u7svJl9s7MrGGKIIf4rZNAOAJRSM8AHYBzYBJ6BZ+DRGPPRr5+BC1BKzQKPwBjwBrwCr8A7cAOcGmMu+vVVcAGllAJugXFgGXgCXoAP4Bm4Bk6MMef9+iu4gFJqHLgDJoAV4AF4AT6BZ+AKODbGnPXrM3cBpdQEcA9MAqvAPfAKfAFPwCVwZIw57ddv7gJKqUngAZgC1oA74A34Bh6BC+DIGHPSr+/cBZRSU8AjMA2sA7fAO/ADPAAXwKEx5rhf/7kLKKWmgSdgBlgHboAP4Bd4AM6BQ2PMUb/+cxdQSs0AT8AssAFcAx/AL3APnAEHxpjDfmPkLqCUmgWegTlgE7gCPoE/4A44BfaNMQf9xsldQCk1BzwDC8AWcAl8AX/ALXACHBhj9vuNlbuAUmoeeAEWgW3gAvgG/oAb4BjYN8bs9RsijCH+Nf4AYcnkMPJB3REAAAAASUVORK5CYII='
+  
+  let trayIcon = nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`)
+  
+  // 调整图标大小以适应托盘（Windows 托盘通常使用 16x16）
+  trayIcon = trayIcon.resize({ width: 16, height: 16 })
+  
+  tray = new Tray(trayIcon)
+  
+  // 创建托盘右键菜单
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show App', click: () => win?.show() },
-    { label: 'Quit', click: () => {
+    { label: '显示主窗口', click: () => win?.show() },
+    { type: 'separator' },
+    { label: '退出', click: () => {
         appWithFlags.isQuitting = true
         app.quit() 
       } 
     }
   ])
-  tray.setToolTip('Stock Monitor')
+  
+  tray.setToolTip('股票监控助手')
   tray.setContextMenu(contextMenu)
   
+  // 点击托盘图标切换窗口显示/隐藏
   tray.on('click', () => {
     if (win?.isVisible()) {
       win.hide()

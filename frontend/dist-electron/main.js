@@ -41,17 +41,16 @@ function createWindow() {
       }, 1e3);
     }
   });
-  win.on("minimize", (event) => {
-    event.preventDefault();
-    win.hide();
+  win.on("minimize", () => {
+    if (win) {
+      win.hide();
+    }
   });
   win.on("close", (event) => {
-    if (!appWithFlags.isQuitting) {
+    if (!appWithFlags.isQuitting && win) {
       event.preventDefault();
       win.hide();
-      return false;
     }
-    return true;
   });
   win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
@@ -79,19 +78,23 @@ app.on("activate", () => {
 });
 app.whenReady().then(() => {
   createWindow();
-  const iconPath = path.join(process.env.VITE_PUBLIC || "", "vite.svg");
-  tray = new Tray(iconPath);
+  const { nativeImage } = require("electron");
+  const iconBase64 = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGRSURBVFiF7ZY9TsNAEIW/WYcGiQKJgoKWgoqOI3AEjkBJRUVFR8cROAJHoKOipKKgoECiQPyIxGbHBRvFJN7sxnZCwZNW8u7svJl9s7MrGGKIIf4rZNAOAJRSM8AHYBzYBJ6BZ+DRGPPRr5+BC1BKzQKPwBjwBrwCr8A7cAOcGmMu+vVVcAGllAJugXFgGXgCXoAP4Bm4Bk6MMef9+iu4gFJqHLgDJoAV4AF4AT6BZ+AKODbGnPXrM3cBpdQEcA9MAqvAPfAKfAFPwCVwZIw57ddv7gJKqUngAZgC1oA74A34Bh6BC+DIGHPSr+/cBZRSU8AjMA2sA7fAO/ADPAAXwKEx5rhf/7kLKKWmgSdgBlgHboAP4Bd4AM6BQ2PMUb/+cxdQSs0AT8AssAFcAx/AL3APnAEHxpjDfmPkLqCUmgWegTlgE7gCPoE/4A44BfaNMQf9xsldQCk1BzwDC8AWcAl8AX/ALXACHBhj9vuNlbuAUmoeeAEWgW3gAvgG/oAb4BjYN8bs9RsijCH+Nf4AYcnkMPJB3REAAAAASUVORK5CYII=";
+  let trayIcon = nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`);
+  trayIcon = trayIcon.resize({ width: 16, height: 16 });
+  tray = new Tray(trayIcon);
   const contextMenu = Menu.buildFromTemplate([
-    { label: "Show App", click: () => win?.show() },
+    { label: "显示主窗口", click: () => win?.show() },
+    { type: "separator" },
     {
-      label: "Quit",
+      label: "退出",
       click: () => {
         appWithFlags.isQuitting = true;
         app.quit();
       }
     }
   ]);
-  tray.setToolTip("Stock Monitor");
+  tray.setToolTip("股票监控助手");
   tray.setContextMenu(contextMenu);
   tray.on("click", () => {
     if (win?.isVisible()) {

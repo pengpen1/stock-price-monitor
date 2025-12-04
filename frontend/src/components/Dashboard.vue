@@ -1,70 +1,119 @@
 <template>
-  <div class="dashboard">
-    <div class="header">
-      <h1>{{ t('title') }}</h1>
-      <div class="controls">
-        <button @click="toggleLanguage" class="lang-btn">{{ currentLang === 'en' ? '中文' : 'English' }}</button>
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <!-- 头部区域 -->
+    <div class="max-w-6xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">{{ t('title') }}</h1>
+        <button 
+          @click="toggleLanguage" 
+          class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          {{ currentLang === 'en' ? '中文' : 'English' }}
+        </button>
       </div>
-    </div>
 
-    <div class="add-stock">
-      <input v-model="newStockCode" :placeholder="t('placeholder')" @keyup.enter="handleAddStock" :disabled="loading" />
-      <button @click="handleAddStock" :disabled="loading">
-        {{ loading ? t('adding') : t('add') }}
-      </button>
-    </div>
+      <!-- 添加股票卡片 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
+        <div class="flex gap-3">
+          <input 
+            v-model="newStockCode" 
+            :placeholder="t('placeholder')" 
+            @keyup.enter="handleAddStock" 
+            :disabled="loading"
+            class="flex-1 px-4 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-slate-50 disabled:cursor-not-allowed"
+          />
+          <button 
+            @click="handleAddStock" 
+            :disabled="loading"
+            class="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {{ loading ? t('adding') : t('add') }}
+          </button>
+        </div>
+      </div>
 
-    <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+      <!-- 错误提示 -->
+      <div v-if="errorMsg" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm">
+        {{ errorMsg }}
+      </div>
 
-    <div class="stock-list">
-      <table>
-        <thead>
-          <tr>
-            <th>{{ t('col_code') }}</th>
-            <th>{{ t('col_name') }}</th>
-            <th>{{ t('col_price') }}</th>
-            <th>{{ t('col_change') }}</th>
-            <th>{{ t('col_high') }}</th>
-            <th>{{ t('col_low') }}</th>
-            <th>{{ t('col_time') }}</th>
-            <th>{{ t('col_action') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="stock in stockData" :key="stock.code"
-            :class="{ 'up': parseFloat(stock.change_percent) > 0, 'down': parseFloat(stock.change_percent) < 0 }">
-            <td>{{ stock.code }}</td>
-            <td>{{ stock.name }}</td>
-            <td>{{ stock.price }}</td>
-            <td>{{ stock.change_percent }}%</td>
-            <td>{{ stock.high }}</td>
-            <td>{{ stock.low }}</td>
-            <td>{{ stock.time }}</td>
-            <td>
-              <button class="delete-btn" @click="handleRemoveStock(stock.code)">{{ t('remove') }}</button>
-            </td>
-          </tr>
-          <tr v-if="stockData.length === 0">
-            <td colspan="8" class="empty">{{ t('empty') }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- 股票列表卡片 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_code') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_name') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_price') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_change') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_high') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_low') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_time') }}</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ t('col_action') }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr 
+              v-for="stock in stockData" 
+              :key="stock.code"
+              class="hover:bg-slate-50 transition-colors"
+            >
+              <td class="px-4 py-4 text-sm font-mono text-slate-700">{{ stock.code }}</td>
+              <td class="px-4 py-4 text-sm font-medium text-slate-800">{{ stock.name }}</td>
+              <td class="px-4 py-4 text-sm text-right font-semibold" :class="getPriceClass(stock.change_percent)">
+                {{ stock.price }}
+              </td>
+              <td class="px-4 py-4 text-sm text-right font-medium" :class="getPriceClass(stock.change_percent)">
+                <span class="inline-flex items-center gap-1">
+                  <span v-if="parseFloat(stock.change_percent) > 0">↑</span>
+                  <span v-else-if="parseFloat(stock.change_percent) < 0">↓</span>
+                  {{ stock.change_percent }}%
+                </span>
+              </td>
+              <td class="px-4 py-4 text-sm text-right text-slate-600">{{ stock.high }}</td>
+              <td class="px-4 py-4 text-sm text-right text-slate-600">{{ stock.low }}</td>
+              <td class="px-4 py-4 text-sm text-slate-500">{{ stock.time }}</td>
+              <td class="px-4 py-4 text-center">
+                <button 
+                  @click="handleRemoveStock(stock.code)"
+                  class="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-md hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                >
+                  {{ t('remove') }}
+                </button>
+              </td>
+            </tr>
+            <!-- 空状态 -->
+            <tr v-if="stockData.length === 0">
+              <td colspan="8" class="px-4 py-12 text-center text-slate-400 text-sm">
+                {{ t('empty') }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 底部状态栏 -->
+      <div class="mt-4 text-center text-xs text-slate-400">
+        {{ t('auto_refresh') }}
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { getStocks, addStock, removeStock } from '../api';
 
+// 响应式状态
 const newStockCode = ref('');
 const stockData = ref<any[]>([]);
 const loading = ref(false);
 const errorMsg = ref('');
 type Lang = 'en' | 'zh';
-const currentLang = ref<Lang>('zh'); // Default to Chinese
-let intervalId: any = null;
+const currentLang = ref<Lang>('zh'); // 默认中文
+let intervalId: ReturnType<typeof setInterval> | null = null;
 
+// 多语言翻译配置
 const translations: Record<Lang, Record<string, string>> = {
   en: {
     title: 'Stock Monitor',
@@ -80,7 +129,8 @@ const translations: Record<Lang, Record<string, string>> = {
     col_high: 'High',
     col_low: 'Low',
     col_time: 'Time',
-    col_action: 'Action'
+    col_action: 'Action',
+    auto_refresh: 'Auto-refreshing every 2 seconds'
   },
   zh: {
     title: '股票监控助手',
@@ -96,36 +146,50 @@ const translations: Record<Lang, Record<string, string>> = {
     col_high: '最高',
     col_low: '最低',
     col_time: '时间',
-    col_action: '操作'
+    col_action: '操作',
+    auto_refresh: '每 2 秒自动刷新'
   }
 };
 
+// 翻译函数
 const t = (key: string) => translations[currentLang.value][key] || key;
 
+// 切换语言
 const toggleLanguage = () => {
   currentLang.value = currentLang.value === 'en' ? 'zh' : 'en';
 };
 
+// 根据涨跌幅返回样式类
+const getPriceClass = (changePercent: string) => {
+  const value = parseFloat(changePercent);
+  if (value > 0) return 'text-red-500'; // 中国股市：红涨
+  if (value < 0) return 'text-green-500'; // 绿跌
+  return 'text-slate-600';
+};
+
+// 更新托盘提示信息
 const updateTray = () => {
   if (stockData.value.length > 0) {
-    // Show top 3 stocks in tooltip
+    // 在托盘提示中显示前3只股票
     const summary = stockData.value.slice(0, 3).map(s => `${s.name}: ${s.price} (${s.change_percent}%)`).join('\n');
-    (window as any).ipcRenderer.send('update-tray', summary);
+    (window as any).ipcRenderer?.send('update-tray', summary);
   } else {
-    (window as any).ipcRenderer.send('update-tray', 'Stock Monitor');
+    (window as any).ipcRenderer?.send('update-tray', 'Stock Monitor');
   }
 };
 
+// 获取股票数据
 const fetchData = async () => {
   try {
     const res = await getStocks();
     stockData.value = Object.values(res.data);
     updateTray();
   } catch (error) {
-    console.error("Failed to fetch stocks:", error);
+    console.error("获取股票数据失败:", error);
   }
 };
 
+// 添加股票
 const handleAddStock = async () => {
   if (!newStockCode.value) return;
   loading.value = true;
@@ -140,187 +204,26 @@ const handleAddStock = async () => {
     }
   } catch (e) {
     console.error(e);
-    errorMsg.value = "Failed to add stock. Check backend connection.";
+    errorMsg.value = "添加股票失败，请检查后端连接。";
   } finally {
     loading.value = false;
   }
 };
 
+// 删除股票
 const handleRemoveStock = async (code: string) => {
   await removeStock(code);
   fetchData();
 };
 
+// 组件挂载时启动定时刷新
 onMounted(() => {
   fetchData();
-  intervalId = setInterval(fetchData, 2000); // Poll every 2 seconds
+  intervalId = setInterval(fetchData, 2000); // 每2秒轮询一次
 });
 
+// 组件卸载时清理定时器
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
 });
 </script>
-
-<style scoped>
-.dashboard {
-  padding: 20px;
-  color: #333;
-  max-width: 1000px;
-  margin: 0 auto;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.app-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.lang-btn {
-  padding: 6px 12px;
-  background: transparent;
-  color: #666;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.lang-btn:hover {
-  background: #f5f5f5;
-  color: #333;
-}
-
-.add-stock {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.add-stock input {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  flex: 1;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.3s;
-}
-
-.add-stock input:focus {
-  border-color: #2196F3;
-}
-
-.add-stock button {
-  padding: 10px 20px;
-  background-color: #2196F3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.3s;
-}
-
-.add-stock button:hover {
-  background-color: #1976D2;
-}
-
-.add-stock button:disabled {
-  background-color: #90CAF9;
-  cursor: not-allowed;
-}
-
-.error-msg {
-  color: #f44336;
-  margin-bottom: 10px;
-  font-size: 14px;
-  background: #ffebee;
-  padding: 10px;
-  border-radius: 4px;
-}
-
-.stock-list {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  padding: 15px;
-  text-align: left;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-th {
-  background-color: #fafafa;
-  font-weight: 600;
-  color: #555;
-  font-size: 14px;
-}
-
-td {
-  font-size: 14px;
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-tr:hover {
-  background-color: #f9f9f9;
-}
-
-.up {
-  color: #f44336;
-  /* Red for up */
-}
-
-.down {
-  color: #4caf50;
-  /* Green for down */
-}
-
-.delete-btn {
-  background-color: transparent;
-  color: #999;
-  border: 1px solid #eee;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s;
-}
-
-.delete-btn:hover {
-  background-color: #ffebee;
-  color: #f44336;
-  border-color: #ffcdd2;
-}
-
-.empty {
-  text-align: center;
-  color: #999;
-  padding: 40px;
-  font-style: italic;
-}
-</style>

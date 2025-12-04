@@ -51,18 +51,18 @@
 
 ## 4. 开发计划 (TODO)
 
-- [ ] **初始化**
-    - [ ] 搭建 Monorepo 结构 (backend/, frontend/)
-    - [ ] 配置 Electron 启动 Python 脚本的逻辑 (开发环境与生产环境)
+- [x] **初始化**
+    - [x] 搭建 Monorepo 结构 (backend/, frontend/)
+    - [x] 配置 Electron 启动 Python 脚本的逻辑 (开发环境与生产环境)
 - [ ] **后端开发**
-    - [ ] 实现 FastAPI 基础服务
-    - [ ] 集成 AkShare 获取实时数据
+    - [x] 实现 FastAPI 基础服务
+    - [x] 集成 AkShare 获取实时数据
     - [ ] 实现监控逻辑与 APScheduler
     - [ ] 实现 PushPlus/DingTalk 推送
 - [ ] **前端开发**
-    - [ ] 初始化 Vue3 + Vite 项目
-    - [ ] 集成 Electron
-    - [ ] 实现股票列表 UI
+    - [x] 初始化 Vue3 + Vite 项目
+    - [x] 集成 Electron
+    - [x] 实现股票列表 UI
     - [ ] 实现设置界面
     - [ ] 对接后端 API
 - [ ] **打包与发布**
