@@ -1,19 +1,20 @@
-import { contextBridge, ipcRenderer } from "electron";
+const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("ipcRenderer", {
-  on: (...args) => {
-    const [channel, listener] = args;
-    return ipcRenderer.on(channel, (event, ...args2) => listener(event, ...args2));
+  // 监听主进程消息
+  on: (channel, listener) => {
+    ipcRenderer.on(channel, (_event, ...args) => listener(...args));
   },
-  off: (...args) => {
-    const [channel, ...omit] = args;
-    return ipcRenderer.off(channel, ...omit);
+  // 移除监听
+  off: (channel, listener) => {
+    ipcRenderer.off(channel, listener);
   },
-  send: (...args) => {
-    const [channel, ...omit] = args;
-    return ipcRenderer.send(channel, ...omit);
+  // 发送消息到主进程
+  send: (channel, ...args) => {
+    ipcRenderer.send(channel, ...args);
   },
-  invoke: (...args) => {
-    const [channel, ...omit] = args;
-    return ipcRenderer.invoke(channel, ...omit);
+  // 发送消息并等待响应
+  invoke: (channel, ...args) => {
+    return ipcRenderer.invoke(channel, ...args);
   }
 });
+console.log("Preload 脚本加载成功");

@@ -11,15 +11,24 @@ export default defineConfig({
     tailwindcss(),
     electron([
       {
-        // Main-Process entry file of the Electron App.
+        // 主进程入口
         entry: 'electron/main.ts',
       },
       {
+        // preload 脚本入口
         entry: 'electron/preload.ts',
         onstart(options) {
-          // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete, 
-          // instead of restarting the entire Electron App.
           options.reload()
+        },
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                // preload 必须使用 CommonJS 格式
+                format: 'cjs',
+              },
+            },
+          },
         },
       },
     ]),
