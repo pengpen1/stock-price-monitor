@@ -19,4 +19,16 @@ export const removeStock = async (code: string) => {
   return response.data;
 };
 
+// 获取设置
+export const getSettings = async () => {
+  const response = await api.get('/settings');
+  return response.data;
+};
+
+// 更新设置
+export const updateSettings = async (settings: Record<string, any>) => {
+  const response = await api.post('/settings', settings);
+  return response.data;
+};
+
 export default api;

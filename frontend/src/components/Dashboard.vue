@@ -4,12 +4,20 @@
     <div class="max-w-6xl mx-auto">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">{{ t('title') }}</h1>
-        <button 
-          @click="toggleLanguage" 
-          class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-        >
-          {{ currentLang === 'en' ? '中文' : 'English' }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button 
+            @click="toggleLanguage" 
+            class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            {{ currentLang === 'en' ? '中文' : 'English' }}
+          </button>
+          <button 
+            @click="$emit('openSettings')" 
+            class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            ⚙️ {{ t('settings') }}
+          </button>
+        </div>
       </div>
 
       <!-- 添加股票卡片 -->
@@ -102,13 +110,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { getStocks, addStock, removeStock } from '../api';
+import { getStocks, addStock, removeStock, getSettings } from '../api';
 
 // 响应式状态
 const newStockCode = ref('');
 const stockData = ref<any[]>([]);
 const loading = ref(false);
 const errorMsg = ref('');
+const refreshInterval = ref(5); // 默认刷新间隔（秒）
 type Lang = 'en' | 'zh';
 const currentLang = ref<Lang>('zh'); // 默认中文
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -130,7 +139,8 @@ const translations: Record<Lang, Record<string, string>> = {
     col_low: 'Low',
     col_time: 'Time',
     col_action: 'Action',
-    auto_refresh: 'Auto-refreshing every 2 seconds'
+    auto_refresh: 'Auto-refreshing every {interval} seconds',
+    settings: 'Settings'
   },
   zh: {
     title: '股票监控助手',
@@ -147,12 +157,17 @@ const translations: Record<Lang, Record<string, string>> = {
     col_low: '最低',
     col_time: '时间',
     col_action: '操作',
-    auto_refresh: '每 2 秒自动刷新'
+    auto_refresh: '每 {interval} 秒自动刷新',
+    settings: '设置'
   }
 };
 
 // 翻译函数
-const t = (key: string) => translations[currentLang.value][key] || key;
+const t = (key: string) => {
+  const text = translations[currentLang.value][key] || key;
+  // 替换 {interval} 占位符
+  return text.replace('{interval}', String(refreshInterval.value));
+};
 
 // 切换语言
 const toggleLanguage = () => {
@@ -216,10 +231,25 @@ const handleRemoveStock = async (code: string) => {
   fetchData();
 };
 
-// 组件挂载时启动定时刷新
-onMounted(() => {
+// 加载设置并启动定时刷新
+const loadSettingsAndStart = async () => {
+  try {
+    const res = await getSettings();
+    if (res.status === 'success' && res.settings?.refresh_interval) {
+      refreshInterval.value = res.settings.refresh_interval;
+    }
+  } catch (e) {
+    console.error('加载设置失败，使用默认值:', e);
+  }
+  
+  // 启动定时刷新
   fetchData();
-  intervalId = setInterval(fetchData, 2000); // 每2秒轮询一次
+  intervalId = setInterval(fetchData, refreshInterval.value * 1000);
+};
+
+// 组件挂载时加载设置并启动
+onMounted(() => {
+  loadSettingsAndStart();
 });
 
 // 组件卸载时清理定时器

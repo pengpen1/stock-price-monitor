@@ -1,0 +1,6 @@
+{
+  "refresh_interval": 5,
+  "pushplus_token": "",
+  "dingtalk_webhook": "",
+  "alert_cooldown": 300
+}

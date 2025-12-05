@@ -1,37 +1,111 @@
 import time
-import akshare as ak
-import pandas as pd
+import json
 from typing import List, Dict
 import os
+from pathlib import Path
+
+# 配置文件路径
+CONFIG_DIR = Path(__file__).parent / "data"
+STOCKS_FILE = CONFIG_DIR / "stocks.json"
+SETTINGS_FILE = CONFIG_DIR / "settings.json"
+
+# 默认设置
+DEFAULT_SETTINGS = {
+    "refresh_interval": 5,  # 刷新间隔（秒）
+    "pushplus_token": "",   # PushPlus 推送 Token
+    "dingtalk_webhook": "", # 钉钉机器人 Webhook
+    "alert_cooldown": 300,  # 预警冷却时间（秒）
+}
 
 class StockMonitor:
     def __init__(self):
-        # Aggressively disable proxies
+        # 禁用代理
         for k in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "all_proxy", "ALL_PROXY"]:
             os.environ.pop(k, None)
-        # Force no proxy for all requests
         os.environ["NO_PROXY"] = "*"
         os.environ["no_proxy"] = "*"
         
-        print("Proxy settings cleared. NO_PROXY set to *")
+        print("代理设置已清除")
 
         self.running = False
-        self.stocks: List[str] = [] # List of stock codes, e.g., "sh600519"
-        self.data: Dict[str, dict] = {} # Store latest data
+        self.stocks: List[str] = []
+        self.data: Dict[str, dict] = {}
+        self.settings: Dict = DEFAULT_SETTINGS.copy()
+        
+        # 加载本地缓存
+        self._load_data()
+    
+    def _ensure_data_dir(self):
+        """确保数据目录存在"""
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    
+    def _load_data(self):
+        """从本地文件加载数据"""
+        self._ensure_data_dir()
+        
+        # 加载股票列表
+        if STOCKS_FILE.exists():
+            try:
+                with open(STOCKS_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.stocks = data.get('stocks', [])
+                    print(f"已加载 {len(self.stocks)} 只股票")
+            except Exception as e:
+                print(f"加载股票列表失败: {e}")
+        
+        # 加载设置
+        if SETTINGS_FILE.exists():
+            try:
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    saved_settings = json.load(f)
+                    self.settings.update(saved_settings)
+                    print("已加载设置")
+            except Exception as e:
+                print(f"加载设置失败: {e}")
+    
+    def _save_stocks(self):
+        """保存股票列表到本地"""
+        self._ensure_data_dir()
+        try:
+            with open(STOCKS_FILE, 'w', encoding='utf-8') as f:
+                json.dump({'stocks': self.stocks}, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"保存股票列表失败: {e}")
+    
+    def _save_settings(self):
+        """保存设置到本地"""
+        self._ensure_data_dir()
+        try:
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.settings, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"保存设置失败: {e}")
+    
+    def get_settings(self):
+        """获取当前设置"""
+        return {"status": "success", "settings": self.settings}
+    
+    def update_settings(self, new_settings: Dict):
+        """更新设置"""
+        self.settings.update(new_settings)
+        self._save_settings()
+        return {"status": "success", "message": "设置已更新", "settings": self.settings}
 
     def add_stock(self, code: str):
         if code not in self.stocks:
             self.stocks.append(code)
-            return {"status": "success", "message": f"Added {code}"}
-        return {"status": "error", "message": "Stock already exists"}
+            self._save_stocks()  # 保存到本地
+            return {"status": "success", "message": f"已添加 {code}"}
+        return {"status": "error", "message": "股票已存在"}
 
     def remove_stock(self, code: str):
         if code in self.stocks:
             self.stocks.remove(code)
             if code in self.data:
                 del self.data[code]
-            return {"status": "success", "message": f"Removed {code}"}
-        return {"status": "error", "message": "Stock not found"}
+            self._save_stocks()  # 保存到本地
+            return {"status": "success", "message": f"已删除 {code}"}
+        return {"status": "error", "message": "股票不存在"}
 
     def get_stocks(self):
         return {"stocks": self.stocks, "data": self.data}
@@ -157,29 +231,30 @@ class StockMonitor:
         except Exception as e:
             print(f"Error fetching data: {e}")
 
-    def add_stock(self, code: str):
-        if code not in self.stocks:
-            self.stocks.append(code)
-            return {"status": "success", "message": f"Added {code}"}
-        return {"status": "error", "message": "Stock already exists"}
-
-    def remove_stock(self, code: str):
+    def remove_stock_flexible(self, code: str):
+        """灵活删除股票（支持带前缀和不带前缀）"""
+        removed = False
         if code in self.stocks:
             self.stocks.remove(code)
+            removed = True
         else:
-            # Try removing with/without prefix
-            # If user passes "600021" but we have "sh600021"
-            for s in self.stocks:
+            # 尝试匹配带/不带前缀的情况
+            for s in self.stocks[:]:
                 if s.endswith(code) or code.endswith(s):
                     self.stocks.remove(s)
+                    removed = True
                     break
         
         if code in self.data:
             del self.data[code]
-        # Also try cleaning up related keys if any
+        
+        # 清理相关的数据
         keys_to_remove = [k for k in self.data.keys() if k.endswith(code) or code.endswith(k)]
         for k in keys_to_remove:
             del self.data[k]
+        
+        if removed:
+            self._save_stocks()  # 保存到本地
 
 
 

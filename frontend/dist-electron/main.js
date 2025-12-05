@@ -39,7 +39,7 @@ function createFloatWindow() {
     hasShadow: false,
     // 无阴影
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.js"),
+      preload: path.join(__dirname$1, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -142,7 +142,7 @@ function createWindow() {
     height: 700,
     icon: getTrayIconPath(),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.js"),
+      preload: path.join(__dirname$1, "preload.cjs"),
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true

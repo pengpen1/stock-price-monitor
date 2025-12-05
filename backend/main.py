@@ -43,5 +43,14 @@ def add_stock(code: str):
 def remove_stock(code: str):
     return monitor.remove_stock(code)
 
+# 设置相关 API
+@app.get("/settings")
+def get_settings():
+    return monitor.get_settings()
+
+@app.post("/settings")
+def update_settings(settings: dict):
+    return monitor.update_settings(settings)
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
