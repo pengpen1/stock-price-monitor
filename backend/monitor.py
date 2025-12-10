@@ -387,10 +387,11 @@ class StockMonitor:
         return code
 
     def get_minute_data(self, code: str) -> dict:
-        """获取分时数据（当天每分钟价格）"""
+        """获取分时数据（昨天+今天的分钟数据，包含集合竞价）"""
         try:
             code = self._normalize_code(code)
-            url = f"https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_{code}_data=/CN_MarketDataService.getKLineData?symbol={code}&scale=1&ma=no&datalen=240"
+            # 获取480条数据（约2天的分时数据，包含集合竞价时段）
+            url = f"https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_{code}_data=/CN_MarketDataService.getKLineData?symbol={code}&scale=1&ma=no&datalen=500"
             headers = {
                 "Referer": "https://finance.sina.com.cn/",
                 "User-Agent": "Mozilla/5.0"
@@ -404,11 +405,16 @@ class StockMonitor:
             if match:
                 import json
                 data = json.loads(match.group())
-                # 返回分时数据：时间、价格、成交量
+                # 返回分时数据：日期、时间、价格、成交量
                 result = []
                 for item in data:
+                    day_str = item.get("day", "")
+                    # day_str 格式: "2024-12-10 09:30:00"
+                    date_part = day_str[:10] if len(day_str) >= 10 else ""
+                    time_part = day_str[-8:] if len(day_str) >= 8 else ""
                     result.append({
-                        "time": item.get("day", "")[-8:],  # HH:MM:SS
+                        "date": date_part,  # 日期部分，用于区分昨天和今天
+                        "time": time_part,  # 时间部分 HH:MM:SS
                         "price": float(item.get("close", 0)),
                         "volume": int(item.get("volume", 0)),
                         "avg_price": float(item.get("ma_price5", 0)) if item.get("ma_price5") else None
