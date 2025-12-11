@@ -18,6 +18,11 @@ DEFAULT_SETTINGS = {
     "pushplus_token": "",
     "dingtalk_webhook": "",
     "alert_cooldown": 300,
+    # AI 配置
+    "ai_provider": "gemini",
+    "ai_api_key": "",
+    "ai_model": "",
+    "ai_proxy": "",
 }
 
 class StockMonitor:
@@ -277,12 +282,21 @@ class StockMonitor:
                     continue
                 
                 fields = data_part.split(',')
-                if len(fields) < 4:
+                if len(fields) < 6:
                     continue
                 
+                # 指数数据格式：名称,今开,昨收,当前点位,最高,最低,成交量,成交额,...
+                # 注意：指数的字段顺序和股票不同
                 name = fields[0]
-                price = float(fields[1]) if fields[1] else 0
+                today_open = float(fields[1]) if fields[1] else 0
                 pre_close = float(fields[2]) if fields[2] else 0
+                price = float(fields[3]) if fields[3] else 0  # 当前点位在第4个字段
+                high = float(fields[4]) if fields[4] else 0
+                low = float(fields[5]) if fields[5] else 0
+                
+                # 如果当前价为0，可能是非交易时间，使用昨收
+                if price == 0:
+                    price = pre_close
                 
                 change_percent = 0.0
                 if pre_close > 0:
@@ -293,7 +307,10 @@ class StockMonitor:
                     "name": name,
                     "price": f"{price:.2f}",
                     "change_percent": f"{change_percent:.2f}",
-                    "pre_close": f"{pre_close:.2f}"
+                    "pre_close": f"{pre_close:.2f}",
+                    "open": f"{today_open:.2f}",
+                    "high": f"{high:.2f}",
+                    "low": f"{low:.2f}"
                 }
         except Exception as e:
             print(f"获取大盘指数失败: {e}")

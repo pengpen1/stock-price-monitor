@@ -15,12 +15,12 @@
         <div class="text-right">
           <div class="flex items-center gap-2 mb-1 justify-end">
             <button @click="openAIModal('fast')"
-              class="px-3 py-1 text-xs font-medium bg-gradient-to-r from-purple-500/10 to-blue-500/10 text-purple-600 border border-purple-200 rounded hover:from-purple-500/20 hover:to-blue-500/20 transition-all flex items-center gap-1">
-              ⚡ 快速分析
+              class="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-md hover:bg-slate-200 hover:border-slate-300 transition-all">
+              快速分析
             </button>
             <button @click="openAIModal('precise')"
-              class="px-3 py-1 text-xs font-medium bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-600 border border-blue-200 rounded hover:from-blue-500/20 hover:to-cyan-500/20 transition-all flex items-center gap-1">
-              🎯 精准分析
+              class="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-md hover:bg-slate-200 hover:border-slate-300 transition-all">
+              精准分析
             </button>
           </div>
           <div class="text-3xl font-bold" :class="priceClass">{{ stockInfo.price || '--' }}</div>

@@ -2,6 +2,7 @@ import { app, ipcMain, Notification, BrowserWindow, shell, nativeImage, Tray, Me
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const userDataPath = app.getPath("userData");
 const appWithFlags = app;
 appWithFlags.isQuitting = false;
 process.env.DIST = path.join(__dirname$1, "../dist");
@@ -283,6 +284,7 @@ app.on("activate", () => {
   }
 });
 app.whenReady().then(() => {
+  console.log("应用启动，用户数据目录:", userDataPath);
   createTray();
   createWindow();
   createFloatWindow();

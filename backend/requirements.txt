@@ -4,3 +4,5 @@ akshare
 apscheduler
 requests
 pandas
+httpx
+certifi

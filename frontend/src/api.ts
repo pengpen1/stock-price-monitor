@@ -109,6 +109,16 @@ export const getMoneyFlow = async (code: string) => {
   return response.data;
 };
 
+// 获取 AI 模型列表
+export const getAIModels = async (provider: string, apiKey: string, proxy?: string) => {
+  const response = await api.post('/ai/models', {
+    provider,
+    api_key: apiKey,
+    proxy: proxy || null
+  });
+  return response.data;
+};
+
 // AI 分析
 export const analyzeStock = async (
   code: string,
@@ -116,7 +126,8 @@ export const analyzeStock = async (
   provider: string,
   apiKey: string,
   model: string,
-  inputs: Record<string, any> = {}
+  inputs: Record<string, any> = {},
+  proxy?: string
 ) => {
   const response = await api.post('/analyze', {
     code,
@@ -124,6 +135,7 @@ export const analyzeStock = async (
     provider,
     api_key: apiKey,
     model,
+    proxy: proxy || null,
     inputs
   });
   return response.data;

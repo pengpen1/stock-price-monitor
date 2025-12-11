@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// 用户数据目录（localStorage 会自动持久化到这里）
+const userDataPath = app.getPath('userData')
+
 // 使用类型转换来添加自定义属性，避免 TS 错误
 const appWithFlags = app as unknown as { isQuitting: boolean } & typeof app
 appWithFlags.isQuitting = false
@@ -387,6 +390,10 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
+  // Electron 默认会将 localStorage 持久化到 userData 目录
+  // 无需额外配置，数据会自动保存到 C:\Users\xxx\AppData\Roaming\frontend
+  console.log('应用启动，用户数据目录:', userDataPath)
+  
   createTray()
   createWindow()
   createFloatWindow()  // 启动时自动创建悬浮窗

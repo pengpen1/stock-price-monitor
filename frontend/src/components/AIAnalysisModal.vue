@@ -3,21 +3,13 @@
         <div
             class="bg-gray-900 rounded-xl w-3/4 max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-700 overflow-hidden transform transition-all">
             <!-- Header -->
-            <div class="flex justify-between items-center p-5 border-b border-gray-700 bg-gray-800">
-                <div class="flex items-center gap-2">
-                    <div
-                        class="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <span class="text-white text-lg font-bold">AI</span>
-                    </div>
-                    <h3 class="text-xl font-bold text-white tracking-wide">
-                        智能分析 - {{ stockCode }}
-                        <span class="text-sm font-normal text-gray-400 ml-2">({{ type === 'fast' ? '快速分析' : '精准分析'
-                            }})</span>
-                    </h3>
-                </div>
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800">
+                <h3 class="text-lg font-semibold text-white">
+                    {{ stockCode }} · {{ type === 'fast' ? '快速分析' : '精准分析' }}
+                </h3>
                 <button @click="close"
                     class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
@@ -40,10 +32,7 @@
                 <!-- Input Form (Precise Mode) -->
                 <div v-else-if="step === 'input'" class="space-y-6 max-w-2xl mx-auto py-4">
                     <div class="bg-gray-800/50 p-6 rounded-lg border border-gray-700/50">
-                        <h4 class="text-lg font-medium text-blue-400 mb-4 flex items-center">
-                            <span class="w-1 h-6 bg-blue-500 mr-2 rounded-full"></span>
-                            基础数据
-                        </h4>
+                        <h4 class="text-base font-medium text-gray-200 mb-4">基础数据</h4>
                         <div class="grid grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-400 mb-2">持仓成本</label>
@@ -76,10 +65,7 @@
                     </div>
 
                     <div class="bg-gray-800/50 p-6 rounded-lg border border-gray-700/50">
-                        <h4 class="text-lg font-medium text-purple-400 mb-4 flex items-center">
-                            <span class="w-1 h-6 bg-purple-500 mr-2 rounded-full"></span>
-                            补充信息
-                        </h4>
+                        <h4 class="text-base font-medium text-gray-200 mb-4">补充信息</h4>
                         <label class="block text-sm font-medium text-gray-400 mb-2">附加材料 (新闻/政策/个人想法)</label>
                         <textarea v-model="inputs.extraText" rows="4"
                             class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
@@ -88,18 +74,18 @@
 
                     <div class="flex justify-end pt-2">
                         <button @click="startAnalysis"
-                            class="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-white font-bold shadow-lg transform hover:-translate-y-0.5 transition-all">开始智能分析</button>
+                            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition-colors">开始分析</button>
                     </div>
                 </div>
 
                 <!-- Loading -->
                 <div v-else-if="step === 'loading'" class="flex flex-col items-center justify-center py-32">
-                    <div class="relative w-20 h-20 mb-8">
-                        <div class="absolute inset-0 border-4 border-blue-500/30 rounded-full animate-ping"></div>
-                        <div class="absolute inset-0 border-4 border-t-blue-500 rounded-full animate-spin"></div>
+                    <div class="relative w-16 h-16 mb-6">
+                        <div class="absolute inset-0 border-3 border-gray-600 rounded-full"></div>
+                        <div class="absolute inset-0 border-3 border-t-blue-500 rounded-full animate-spin"></div>
                     </div>
-                    <h4 class="text-2xl font-light text-white mb-2">AI 正在深度思考</h4>
-                    <p class="text-blue-300/70 animate-pulse">正在获取市场数据并通过 {{ config?.provider }} 模型进行分析...</p>
+                    <h4 class="text-lg font-medium text-white mb-2">正在分析中</h4>
+                    <p class="text-gray-400 text-sm">通过 {{ config?.provider }} 获取分析结果...</p>
                 </div>
 
                 <!-- Result -->
@@ -121,7 +107,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import { marked } from 'marked';
-import { analyzeStock } from '../api';
+import { analyzeStock, getSettings } from '../api';
 
 const props = defineProps<{
     visible: boolean;
@@ -140,7 +126,7 @@ const inputs = ref({
     extraText: ''
 });
 const result = ref('');
-const config = ref<{ provider: string, apiKey: string, model: string } | null>(null);
+const config = ref<{ provider: string, apiKey: string, model: string, proxy?: string } | null>(null);
 
 const hasConfig = computed(() => !!config.value?.apiKey);
 
@@ -148,14 +134,13 @@ const renderedResult = computed(() => {
     return marked.parse(result.value);
 });
 
-watch(() => props.visible, (newVal) => {
+watch(() => props.visible, async (newVal) => {
     if (newVal) {
-        loadConfig();
+        await loadConfig();
         result.value = '';
 
         // 如果没有配置，就不进行后续判断了
-        if (!localStorage.getItem('ai_config')) {
-            config.value = null;
+        if (!config.value?.apiKey) {
             return;
         }
 
@@ -168,11 +153,22 @@ watch(() => props.visible, (newVal) => {
     }
 });
 
-const loadConfig = () => {
-    const saved = localStorage.getItem('ai_config');
-    if (saved) {
-        config.value = JSON.parse(saved);
-    } else {
+// 从后端加载 AI 配置
+const loadConfig = async () => {
+    try {
+        const res = await getSettings();
+        if (res.status === 'success' && res.settings?.ai_api_key) {
+            config.value = {
+                provider: res.settings.ai_provider || 'gemini',
+                apiKey: res.settings.ai_api_key || '',
+                model: res.settings.ai_model || '',
+                proxy: res.settings.ai_proxy || ''
+            };
+        } else {
+            config.value = null;
+        }
+    } catch (e) {
+        console.error('加载 AI 配置失败:', e);
         config.value = null;
     }
 };
@@ -200,7 +196,8 @@ const startAnalysis = async () => {
             config.value.provider,
             config.value.apiKey,
             config.value.model,
-            props.type === 'precise' ? analysisInputs : {}
+            props.type === 'precise' ? analysisInputs : {},
+            config.value.proxy
         );
 
         if (res.status === 'success') {

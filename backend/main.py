@@ -118,35 +118,45 @@ class AnalyzeRequest(BaseModel):
     provider: str
     api_key: str
     model: str
+    proxy: Optional[str] = None  # 代理地址，如 http://127.0.0.1:7890
     inputs: Optional[Dict] = {}
+
+class ModelsRequest(BaseModel):
+    provider: str
+    api_key: str
+    proxy: Optional[str] = None
+
+@app.post("/ai/models")
+def get_ai_models(req: ModelsRequest):
+    """获取指定提供商的可用模型列表"""
+    try:
+        models = AIService.get_models(req.provider, req.api_key, req.proxy)
+        return {"status": "success", "models": models}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "models": []}
 
 @app.post("/analyze")
 def analyze_stock(req: AnalyzeRequest):
-    # Fetch data
+    # 获取股票数据
     stock_detail = monitor.get_stock_detail(req.code)
     basic = stock_detail.get("basic", {})
     
-    # Check if we have data
     if not basic:
         return {"status": "error", "message": "无法获取股票基本信息"}
         
-    # Determine data range based on type
+    # 根据分析类型获取不同范围的数据
     if req.type == "fast":
-        # Fast: 2 days minute, 6 month (120 days) kline
         minute = monitor.get_minute_data(req.code).get("data", [])
         kline = monitor.get_kline_data(req.code, "day", 120).get("data", [])
     else:
-        # Precise: 3 days minute, 1 year (240 days) kline
-        # Note: standard minute data is usually 240 or 480 points (1-2 days). 
-        # Sina API usually returns limited history for minute data. We use what we can get.
         minute = monitor.get_minute_data(req.code).get("data", []) 
         kline = monitor.get_kline_data(req.code, "day", 240).get("data", [])
         
-    # Format prompt
+    # 格式化提示词
     prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs)
     
-    # Call LLM
-    result = AIService.call_llm(req.provider, req.api_key, req.model, prompt)
+    # 调用 LLM（支持代理）
+    result = AIService.call_llm(req.provider, req.api_key, req.model, prompt, req.proxy)
     
     return {"status": "success", "result": result}
 
