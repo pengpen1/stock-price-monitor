@@ -18,6 +18,18 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 echo "========================================"
+echo "  第零步：清理敏感配置"
+echo "========================================"
+echo
+
+# 创建干净的配置文件用于打包（避免泄露 API Key 等敏感信息）
+echo '{"refresh_interval":5,"pushplus_token":"","dingtalk_webhook":"","alert_cooldown":300,"ai_provider":"gemini","ai_api_key":"","ai_model":"","ai_proxy":""}' > backend/data/settings.json
+echo '{"stocks":[],"focused_stock":null,"groups":{},"group_list":[]}' > backend/data/stocks.json
+echo '{}' > backend/data/alerts.json
+echo "敏感配置已清理"
+
+echo
+echo "========================================"
 echo "  第一步：打包后端"
 echo "========================================"
 echo
