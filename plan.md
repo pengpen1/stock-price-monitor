@@ -54,7 +54,7 @@
 - [x] **初始化**
     - [x] 搭建 Monorepo 结构 (backend/, frontend/)
     - [x] 配置 Electron 启动 Python 脚本的逻辑 (开发环境与生产环境)
-- [ ] **后端开发**
+- [x] **后端开发**
     - [x] 实现 FastAPI 基础服务
     - [x] 集成 AkShare 获取实时数据
     - [x] 实现监控逻辑与 APScheduler
@@ -65,16 +65,16 @@
     - [x] 实现股票列表 UI
     - [x] 实现设置界面
     - [x] 对接后端 API
-- [ ] **打包与发布**
-    - [ ] 使用 electron-builder 打包
-    - [ ] 验证 Python 环境打包问题 (PyInstaller)
+- [x] **打包与发布**
+    - [x] 使用 electron-builder 打包
+    - [x] 验证 Python 环境打包问题 (PyInstaller)
 
 ## 5. 扩展功能 (AI Analysis)
-- [ ] **AI 分析集成**
-    - [ ] **配置管理**:
+- [x] **AI 分析集成**
+    - [x] **配置管理**:
         - 支持配置主流大模型 (Gemini, GPT, Claude 等) 的 API Key。
         - 兼容不同模型的 API 数据格式。
-    - [ ] **功能实现**:
+    - [x] **功能实现**:
         - **快速分析**:
             - 入口: 列表页及详情页。
             - 输入: 近2天+当日分时数据，近半年日K数据。

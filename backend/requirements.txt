@@ -6,3 +6,4 @@ requests
 pandas
 httpx
 certifi
+pyinstaller

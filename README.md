@@ -129,9 +129,9 @@ stock-price-monitor/
 - [x] 预警功能
 - [x] 消息推送
 - [x] 拖拽排序
-- [ ] 打包发布 (electron-builder)
-- [ ] K 线图表
-- [ ] AI 分析
+- [x] 打包发布 (electron-builder)
+- [x] K 线图表
+- [x] AI 分析
 
 ## 📄 License
 

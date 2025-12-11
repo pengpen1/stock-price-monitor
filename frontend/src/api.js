@@ -98,7 +98,6 @@ export const getAIModels = async (provider, apiKey, proxy) => {
     });
     return response.data;
 };
-
 // AI 分析
 export const analyzeStock = async (code, type, provider, apiKey, model, inputs = {}, proxy) => {
     const response = await api.post('/analyze', {

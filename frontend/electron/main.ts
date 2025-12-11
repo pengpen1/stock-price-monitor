@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, shell, nativeImage, screen, Notification } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawn, ChildProcess } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -20,8 +21,67 @@ process.env.VITE_PUBLIC = app.isPackaged
 let win: BrowserWindow | null = null
 let floatWin: BrowserWindow | null = null  // 悬浮窗
 let tray: Tray | null = null
+let backendProcess: ChildProcess | null = null  // 后端进程
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+
+// 启动后端服务
+function startBackend() {
+  if (!app.isPackaged) {
+    // 开发模式下不自动启动后端
+    console.log('开发模式，请手动启动后端服务')
+    return
+  }
+  
+  // 打包后的后端 exe 路径
+  const backendPath = path.join(process.resourcesPath, 'backend')
+  const backendExe = path.join(backendPath, 'stock-monitor-backend.exe')
+  
+  console.log('启动后端服务:', backendExe)
+  console.log('工作目录:', backendPath)
+  
+  // 启动后端 exe
+  backendProcess = spawn(backendExe, [], {
+    cwd: backendPath,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: false  // 显示控制台窗口方便调试，正式版可改为 true
+  })
+  
+  backendProcess.stdout?.on('data', (data) => {
+    console.log(`[后端] ${data}`)
+  })
+  
+  backendProcess.stderr?.on('data', (data) => {
+    console.error(`[后端错误] ${data}`)
+  })
+  
+  backendProcess.on('close', (code) => {
+    console.log(`后端进程退出，代码: ${code}`)
+    // 如果后端意外退出且应用未在退出中，尝试重启
+    if (code !== 0 && !appWithFlags.isQuitting) {
+      console.log('后端意外退出，3秒后尝试重启...')
+      setTimeout(startBackend, 3000)
+    }
+  })
+  
+  backendProcess.on('error', (err) => {
+    console.error('启动后端失败:', err)
+  })
+}
+
+// 停止后端服务
+function stopBackend() {
+  if (backendProcess) {
+    console.log('停止后端服务...')
+    // Windows 下需要强制终止
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'])
+    } else {
+      backendProcess.kill()
+    }
+    backendProcess = null
+  }
+}
 
 // 悬浮窗配置
 const FLOAT_WIN_WIDTH = 200
@@ -383,6 +443,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   appWithFlags.isQuitting = true
+  stopBackend()  // 退出前停止后端服务
 })
 
 app.on('activate', () => {
@@ -392,9 +453,10 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
-  // Electron 默认会将 localStorage 持久化到 userData 目录
-  // 无需额外配置，数据会自动保存到 C:\Users\xxx\AppData\Roaming\frontend
   console.log('应用启动，用户数据目录:', userDataPath)
+  
+  // 启动后端服务（仅打包后生效）
+  startBackend()
   
   createTray()
   createWindow()

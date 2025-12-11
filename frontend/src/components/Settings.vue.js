@@ -1,6 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getSettings, updateSettings } from '../api';
+import { getSettings, updateSettings, getAIModels } from '../api';
 const { t } = useI18n();
 const emit = defineEmits(['back']);
 // 设置数据
@@ -13,8 +13,13 @@ const settings = ref({
 const aiConfig = ref({
     provider: 'openai',
     apiKey: '',
-    model: ''
+    model: '',
+    proxy: ''
 });
+// 模型列表相关
+const modelList = ref([]);
+const loadingModels = ref(false);
+const modelError = ref('');
 const saving = ref(false);
 const message = ref('');
 const messageType = ref('success');
@@ -28,11 +33,21 @@ const loadSettings = async () => {
     try {
         const res = await getSettings();
         if (res.status === 'success') {
-            settings.value = { ...settings.value, ...res.settings };
-        }
-        const savedAi = localStorage.getItem('ai_config');
-        if (savedAi) {
-            aiConfig.value = JSON.parse(savedAi);
+            const s = res.settings;
+            // 基础设置
+            settings.value = {
+                refresh_interval: s.refresh_interval ?? 5,
+                alert_cooldown: s.alert_cooldown ?? 300,
+                pushplus_token: s.pushplus_token ?? '',
+                dingtalk_webhook: s.dingtalk_webhook ?? '',
+            };
+            // AI 配置（从后端加载）
+            aiConfig.value = {
+                provider: s.ai_provider ?? 'gemini',
+                apiKey: s.ai_api_key ?? '',
+                model: s.ai_model ?? '',
+                proxy: s.ai_proxy ?? '',
+            };
         }
     }
     catch (e) {
@@ -44,8 +59,15 @@ const saveSettings = async () => {
     saving.value = true;
     message.value = '';
     try {
-        localStorage.setItem('ai_config', JSON.stringify(aiConfig.value));
-        const res = await updateSettings(settings.value);
+        // 合并基础设置和 AI 配置，一起保存到后端
+        const allSettings = {
+            ...settings.value,
+            ai_provider: aiConfig.value.provider,
+            ai_api_key: aiConfig.value.apiKey,
+            ai_model: aiConfig.value.model,
+            ai_proxy: aiConfig.value.proxy,
+        };
+        const res = await updateSettings(allSettings);
         if (res.status === 'success') {
             messageType.value = 'success';
             message.value = t('common.settings_saved');
@@ -73,11 +95,44 @@ const resetSettings = () => {
         dingtalk_webhook: '',
     };
     aiConfig.value = {
-        provider: 'openai',
+        provider: 'gemini',
         apiKey: '',
-        model: ''
+        model: '',
+        proxy: ''
     };
-    localStorage.removeItem('ai_config');
+    modelList.value = [];
+};
+// 切换提供商时清空模型列表
+const onProviderChange = () => {
+    modelList.value = [];
+    aiConfig.value.model = '';
+    modelError.value = '';
+};
+// 获取模型列表
+const fetchModels = async () => {
+    if (!aiConfig.value.apiKey)
+        return;
+    loadingModels.value = true;
+    modelError.value = '';
+    try {
+        const res = await getAIModels(aiConfig.value.provider, aiConfig.value.apiKey, aiConfig.value.proxy || undefined);
+        if (res.status === 'success' && res.models?.length > 0) {
+            modelList.value = res.models;
+            // 如果当前没有选中模型，自动选第一个
+            if (!aiConfig.value.model) {
+                aiConfig.value.model = res.models[0].id;
+            }
+        }
+        else {
+            modelError.value = res.message || '未获取到可用模型';
+        }
+    }
+    catch (e) {
+        modelError.value = e.message || '获取模型列表失败，请检查网络或代理配置';
+    }
+    finally {
+        loadingModels.value = false;
+    }
 };
 onMounted(() => {
     loadSettings();
@@ -200,11 +255,12 @@ __VLS_asFunctionalElement(__VLS_intrinsics.label, __VLS_intrinsics.label)({
 // @ts-ignore
 [$t,];
 __VLS_asFunctionalElement(__VLS_intrinsics.select, __VLS_intrinsics.select)({
+    ...{ onChange: (__VLS_ctx.onProviderChange) },
     value: (__VLS_ctx.aiConfig.provider),
     ...{ class: "w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" },
 });
 // @ts-ignore
-[aiConfig,];
+[onProviderChange, aiConfig,];
 __VLS_asFunctionalElement(__VLS_intrinsics.option, __VLS_intrinsics.option)({
     value: "openai",
 });
@@ -230,20 +286,102 @@ __VLS_asFunctionalElement(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
 __VLS_asFunctionalElement(__VLS_intrinsics.label, __VLS_intrinsics.label)({
     ...{ class: "block text-sm font-medium text-slate-600 mb-2" },
 });
-(__VLS_ctx.$t('settings.ai_model'));
-// @ts-ignore
-[$t,];
 __VLS_asFunctionalElement(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.aiConfig.model),
+    value: (__VLS_ctx.aiConfig.proxy),
     type: "text",
     ...{ class: "w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" },
-    placeholder: "e.g. gpt-4o, gemini-pro, claude-3-opus",
+    placeholder: "http://127.0.0.1:10808",
 });
 // @ts-ignore
 [aiConfig,];
 __VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({
     ...{ class: "text-xs text-slate-400 mt-1" },
 });
+__VLS_asFunctionalElement(__VLS_intrinsics.details, __VLS_intrinsics.details)({
+    ...{ class: "mt-2 text-xs text-slate-500" },
+});
+__VLS_asFunctionalElement(__VLS_intrinsics.summary, __VLS_intrinsics.summary)({
+    ...{ class: "cursor-pointer hover:text-slate-700" },
+});
+__VLS_asFunctionalElement(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+    ...{ class: "mt-2 p-3 bg-slate-50 rounded-lg space-y-1" },
+});
+__VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.strong, __VLS_intrinsics.strong)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.code, __VLS_intrinsics.code)({
+    ...{ class: "bg-slate-200 px-1 rounded" },
+});
+__VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.strong, __VLS_intrinsics.strong)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.code, __VLS_intrinsics.code)({
+    ...{ class: "bg-slate-200 px-1 rounded" },
+});
+__VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.strong, __VLS_intrinsics.strong)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
+__VLS_asFunctionalElement(__VLS_intrinsics.label, __VLS_intrinsics.label)({
+    ...{ class: "block text-sm font-medium text-slate-600 mb-2" },
+});
+(__VLS_ctx.$t('settings.ai_model'));
+// @ts-ignore
+[$t,];
+__VLS_asFunctionalElement(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+    ...{ class: "flex gap-2" },
+});
+if (__VLS_ctx.modelList.length > 0) {
+    // @ts-ignore
+    [modelList,];
+    __VLS_asFunctionalElement(__VLS_intrinsics.select, __VLS_intrinsics.select)({
+        value: (__VLS_ctx.aiConfig.model),
+        ...{ class: "flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" },
+    });
+    // @ts-ignore
+    [aiConfig,];
+    for (const [m] of __VLS_getVForSourceType((__VLS_ctx.modelList))) {
+        // @ts-ignore
+        [modelList,];
+        __VLS_asFunctionalElement(__VLS_intrinsics.option, __VLS_intrinsics.option)({
+            key: (m.id),
+            value: (m.id),
+        });
+        (m.name);
+    }
+}
+else {
+    __VLS_asFunctionalElement(__VLS_intrinsics.input)({
+        value: (__VLS_ctx.aiConfig.model),
+        type: "text",
+        ...{ class: "flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" },
+        placeholder: "e.g. gpt-4o, gemini-pro",
+    });
+    // @ts-ignore
+    [aiConfig,];
+}
+__VLS_asFunctionalElement(__VLS_intrinsics.button, __VLS_intrinsics.button)({
+    ...{ onClick: (__VLS_ctx.fetchModels) },
+    disabled: (!__VLS_ctx.aiConfig.apiKey || __VLS_ctx.loadingModels),
+    ...{ class: "px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap" },
+});
+// @ts-ignore
+[aiConfig, fetchModels, loadingModels,];
+(__VLS_ctx.loadingModels ? '加载中...' : '获取模型');
+// @ts-ignore
+[loadingModels,];
+if (__VLS_ctx.modelError) {
+    // @ts-ignore
+    [modelError,];
+    __VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({
+        ...{ class: "text-xs text-red-500 mt-1" },
+    });
+    (__VLS_ctx.modelError);
+    // @ts-ignore
+    [modelError,];
+}
+else {
+    __VLS_asFunctionalElement(__VLS_intrinsics.p, __VLS_intrinsics.p)({
+        ...{ class: "text-xs text-slate-400 mt-1" },
+    });
+}
 __VLS_asFunctionalElement(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ class: "bg-white rounded-xl shadow-sm border border-slate-100 p-6" },
 });
@@ -464,6 +602,65 @@ if (__VLS_ctx.message) {
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:ring-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:ring-blue-500']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-slate-400']} */ ;
+/** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['mt-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
+/** @type {__VLS_StyleScopedClasses['cursor-pointer']} */ ;
+/** @type {__VLS_StyleScopedClasses['hover:text-slate-700']} */ ;
+/** @type {__VLS_StyleScopedClasses['mt-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['p-3']} */ ;
+/** @type {__VLS_StyleScopedClasses['bg-slate-50']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
+/** @type {__VLS_StyleScopedClasses['space-y-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['bg-slate-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded']} */ ;
+/** @type {__VLS_StyleScopedClasses['bg-slate-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded']} */ ;
+/** @type {__VLS_StyleScopedClasses['block']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
+/** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-slate-600']} */ ;
+/** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['flex']} */ ;
+/** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['border']} */ ;
+/** @type {__VLS_StyleScopedClasses['border-slate-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:ring-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:ring-blue-500']} */ ;
+/** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
+/** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['border']} */ ;
+/** @type {__VLS_StyleScopedClasses['border-slate-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:ring-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:ring-blue-500']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['bg-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-slate-600']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
+/** @type {__VLS_StyleScopedClasses['hover:bg-slate-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
+/** @type {__VLS_StyleScopedClasses['disabled:cursor-not-allowed']} */ ;
+/** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
+/** @type {__VLS_StyleScopedClasses['whitespace-nowrap']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-red-500']} */ ;
+/** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;

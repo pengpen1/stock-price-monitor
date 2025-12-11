@@ -52,14 +52,12 @@
     ],
     "extraResources": [
       {
-        "from": "../backend",
-        "to": "backend",
-        "filter": [
-          "**/*",
-          "!venv/**",
-          "!__pycache__/**",
-          "!*.pyc"
-        ]
+        "from": "resources/stock-monitor-backend.exe",
+        "to": "backend/stock-monitor-backend.exe"
+      },
+      {
+        "from": "resources/data",
+        "to": "backend/data"
       }
     ],
     "win": {
