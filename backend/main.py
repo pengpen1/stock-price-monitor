@@ -150,4 +150,5 @@ def analyze_stock(req: AnalyzeRequest):
     
     return {"status": "success", "result": result}
 
+if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

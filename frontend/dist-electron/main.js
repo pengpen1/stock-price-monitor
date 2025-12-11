@@ -1,169 +1,289 @@
-import { app as f, ipcMain as g, Notification as W, BrowserWindow as D, shell as A, nativeImage as F, Tray as B, Menu as $, screen as k } from "electron";
-import d from "node:path";
-import { fileURLToPath as z } from "node:url";
-const E = d.dirname(z(import.meta.url)), v = f;
-v.isQuitting = !1;
-process.env.DIST = d.join(E, "../dist");
-process.env.VITE_PUBLIC = f.isPackaged ? process.env.DIST : d.join(process.env.DIST, "../public");
-let o = null, e = null, l = null;
-const w = process.env.VITE_DEV_SERVER_URL, T = 200, y = 150, I = 0, _ = 20;
-function C() {
-  return d.join(process.env.VITE_PUBLIC || "", "stock.ico");
+import { app, ipcMain, Notification, BrowserWindow, shell, nativeImage, Tray, Menu, screen } from "electron";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const appWithFlags = app;
+appWithFlags.isQuitting = false;
+process.env.DIST = path.join(__dirname$1, "../dist");
+process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, "../public");
+let win = null;
+let floatWin = null;
+let tray = null;
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const FLOAT_WIN_WIDTH = 200;
+const FLOAT_WIN_HEIGHT = 150;
+const EDGE_MARGIN = 0;
+const EDGE_THRESHOLD = 20;
+function getTrayIconPath() {
+  return path.join(process.env.VITE_PUBLIC || "", "stock.ico");
 }
-function M() {
-  if (e) return;
-  const { width: s, height: t } = k.getPrimaryDisplay().workAreaSize;
-  e = new D({
-    width: T,
-    height: y,
-    x: s - T - 20,
+function createFloatWindow() {
+  if (floatWin) return;
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+  floatWin = new BrowserWindow({
+    width: FLOAT_WIN_WIDTH,
+    height: FLOAT_WIN_HEIGHT,
+    x: screenWidth - FLOAT_WIN_WIDTH - 20,
     // 默认右下角
-    y: t - y - 20,
-    frame: !1,
+    y: screenHeight - FLOAT_WIN_HEIGHT - 20,
+    frame: false,
     // 无边框
-    transparent: !0,
+    transparent: true,
     // 透明背景
-    alwaysOnTop: !0,
+    alwaysOnTop: true,
     // 始终置顶
-    skipTaskbar: !0,
+    skipTaskbar: true,
     // 不在任务栏显示
-    resizable: !1,
+    resizable: false,
     // 不可调整大小
-    hasShadow: !1,
+    hasShadow: false,
     // 无阴影
     webPreferences: {
-      preload: d.join(E, "preload.cjs"),
-      contextIsolation: !0,
-      nodeIntegration: !1
+      preload: path.join(__dirname$1, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false
     }
-  }), w ? e.loadURL(`${w}#/float`) : e.loadFile(d.join(process.env.DIST || "", "index.html"), { hash: "/float" }), e.webContents.on("did-finish-load", () => {
+  });
+  if (VITE_DEV_SERVER_URL) {
+    floatWin.loadURL(`${VITE_DEV_SERVER_URL}#/float`);
+  } else {
+    floatWin.loadFile(path.join(process.env.DIST || "", "index.html"), { hash: "/float" });
+  }
+  floatWin.webContents.on("did-finish-load", () => {
     console.log("悬浮窗页面加载完成");
-  }), e.on("focus", () => {
-    e?.setOpacity(1);
-  }), e.on("blur", () => {
-    e?.setOpacity(0.7);
-  }), e.on("moved", () => {
-    if (!e) return;
-    const [n, a] = e.getPosition(), { width: b, height: i } = k.getPrimaryDisplay().workAreaSize;
-    let r = n, u = a;
-    n < _ && (r = I), n + T > b - _ && (r = b - T - I), a < _ && (u = I), a + y > i - _ && (u = i - y - I), (r !== n || u !== a) && e.setPosition(r, u, !0);
-  }), e.on("closed", () => {
-    e = null;
-  }), e.setOpacity(0.7), console.log("悬浮窗创建成功");
+  });
+  floatWin.on("focus", () => {
+    floatWin?.setOpacity(1);
+  });
+  floatWin.on("blur", () => {
+    floatWin?.setOpacity(0.7);
+  });
+  floatWin.on("moved", () => {
+    if (!floatWin) return;
+    const [x, y] = floatWin.getPosition();
+    const { width: screenWidth2, height: screenHeight2 } = screen.getPrimaryDisplay().workAreaSize;
+    let newX = x;
+    let newY = y;
+    if (x < EDGE_THRESHOLD) {
+      newX = EDGE_MARGIN;
+    }
+    if (x + FLOAT_WIN_WIDTH > screenWidth2 - EDGE_THRESHOLD) {
+      newX = screenWidth2 - FLOAT_WIN_WIDTH - EDGE_MARGIN;
+    }
+    if (y < EDGE_THRESHOLD) {
+      newY = EDGE_MARGIN;
+    }
+    if (y + FLOAT_WIN_HEIGHT > screenHeight2 - EDGE_THRESHOLD) {
+      newY = screenHeight2 - FLOAT_WIN_HEIGHT - EDGE_MARGIN;
+    }
+    if (newX !== x || newY !== y) {
+      floatWin.setPosition(newX, newY, true);
+    }
+  });
+  floatWin.on("closed", () => {
+    floatWin = null;
+  });
+  floatWin.setOpacity(0.7);
+  console.log("悬浮窗创建成功");
 }
-function G() {
-  if (l) return;
-  const s = C();
-  console.log("创建托盘图标，路径:", s);
+function createTray() {
+  if (tray) return;
+  const iconPath = getTrayIconPath();
+  console.log("创建托盘图标，路径:", iconPath);
   try {
-    const t = F.createFromPath(s);
-    if (t.isEmpty()) {
+    const trayIcon = nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
       console.error("托盘图标加载失败");
       return;
     }
-    l = new B(t);
-    const n = $.buildFromTemplate([
-      { label: "显示主窗口", click: () => o?.show() },
+    tray = new Tray(trayIcon);
+    const contextMenu = Menu.buildFromTemplate([
+      { label: "显示主窗口", click: () => win?.show() },
       {
         label: "显示悬浮窗",
         click: () => {
-          e ? e.show() : M();
+          if (floatWin) {
+            floatWin.show();
+          } else {
+            createFloatWindow();
+          }
         }
       },
       { type: "separator" },
       {
         label: "退出",
         click: () => {
-          v.isQuitting = !0, f.quit();
+          appWithFlags.isQuitting = true;
+          app.quit();
         }
       }
     ]);
-    l.setToolTip("股票监控助手"), l.setContextMenu(n), l.on("click", () => {
-      o && (o.isVisible() ? o.hide() : (o.show(), o.focus()));
-    }), console.log("托盘图标创建成功");
-  } catch (t) {
-    console.error("创建托盘图标失败:", t);
+    tray.setToolTip("股票监控助手");
+    tray.setContextMenu(contextMenu);
+    tray.on("click", () => {
+      if (win) {
+        if (win.isVisible()) {
+          win.hide();
+        } else {
+          win.show();
+          win.focus();
+        }
+      }
+    });
+    console.log("托盘图标创建成功");
+  } catch (error) {
+    console.error("创建托盘图标失败:", error);
   }
 }
-function V() {
-  o = new D({
+function createWindow() {
+  win = new BrowserWindow({
     width: 1e3,
     height: 700,
-    icon: C(),
+    icon: getTrayIconPath(),
     webPreferences: {
-      preload: d.join(E, "preload.cjs"),
-      sandbox: !1,
-      nodeIntegration: !1,
-      contextIsolation: !0
+      preload: path.join(__dirname$1, "preload.cjs"),
+      sandbox: false,
+      nodeIntegration: false,
+      contextIsolation: true
     }
-  }), o.setMenuBarVisibility(!1), o.webContents.on("did-finish-load", () => {
-    o?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  }), w ? (o.loadURL(w), o.webContents.openDevTools()) : o.loadFile(d.join(process.env.DIST || "", "index.html")), o.webContents.on("did-fail-load", (s, t, n) => {
-    console.log("窗口加载失败:", t, n), t === -102 && setTimeout(() => {
-      o && w && o.loadURL(w);
-    }, 1e3);
-  }), o.on("minimize", () => {
-    o?.hide();
-  }), o.on("close", (s) => {
-    v.isQuitting || (s.preventDefault(), o?.hide());
-  }), o.webContents.setWindowOpenHandler((s) => (A.openExternal(s.url), { action: "deny" }));
-}
-g.on("update-tray", (s, t) => {
-  l && l.setToolTip(t);
-});
-g.on("update-tray-icon", (s, t) => {
-  if (l)
-    try {
-      const n = parseFloat(t.change), a = n >= 0, b = a ? "+" : "", i = 16, r = Buffer.alloc(i * i * 4), u = { b: 40, g: 40, r: 40, a: 255 }, x = a ? { b: 79, g: 77, r: 255, a: 255 } : { b: 26, g: 196, r: 82, a: 255 }, R = 10, j = Math.min(Math.abs(n), R), L = Math.max(2, Math.round(j / R * (i - 4)));
-      for (let c = 0; c < i; c++)
-        for (let h = 0; h < i; h++) {
-          const m = (c * i + h) * 4;
-          let p = u;
-          const P = 8, S = (i - P) / 2, U = S + P;
-          if (h >= S && h < U)
-            if (a) {
-              const O = i - 2 - L;
-              c >= O && c < i - 2 && (p = x);
-            } else
-              c >= 2 && c < 2 + L && (p = x);
-          c === Math.floor(i / 2) && h >= 1 && h < i - 1 && (p = { b: 100, g: 100, r: 100, a: 255 }), r[m] = p.b, r[m + 1] = p.g, r[m + 2] = p.r, r[m + 3] = p.a;
+  });
+  win.setMenuBarVisibility(false);
+  win.webContents.on("did-finish-load", () => {
+    win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  });
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL);
+    win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(process.env.DIST || "", "index.html"));
+  }
+  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+    console.log("窗口加载失败:", errorCode, errorDescription);
+    if (errorCode === -102) {
+      setTimeout(() => {
+        if (win && VITE_DEV_SERVER_URL) {
+          win.loadURL(VITE_DEV_SERVER_URL);
         }
-      const H = F.createFromBuffer(r, {
-        width: i,
-        height: i
-      });
-      l.setImage(H), l.setToolTip(`${t.name}: ${t.price} (${b}${n.toFixed(2)}%)`);
-    } catch (n) {
-      console.error("更新托盘图标失败:", n);
+      }, 1e3);
     }
-});
-g.on("update-float-window", (s, t) => {
-  e && !e.isDestroyed() && e.webContents.send("stock-data-update", t);
-});
-g.on("close-float-window", () => {
-  console.log("收到关闭悬浮窗请求"), e && !e.isDestroyed() && (e.close(), e = null, console.log("悬浮窗已关闭"));
-});
-g.on("show-notification", (s, t) => {
-  if (W.isSupported()) {
-    const n = new W({
-      title: t.title,
-      body: t.body,
-      icon: C()
-    });
-    n.on("click", () => {
-      o && (o.show(), o.focus());
-    }), n.show(), console.log("系统通知已发送:", t.title);
+  });
+  win.on("minimize", () => {
+    win?.hide();
+  });
+  win.on("close", (event) => {
+    if (!appWithFlags.isQuitting) {
+      event.preventDefault();
+      win?.hide();
+    }
+  });
+  win.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
+}
+ipcMain.on("update-tray", (_event, text) => {
+  if (tray) {
+    tray.setToolTip(text);
   }
 });
-f.on("window-all-closed", () => {
-  process.platform !== "darwin" && f.quit();
+ipcMain.on("update-tray-icon", (_event, data) => {
+  if (!tray) return;
+  try {
+    const change = parseFloat(data.change);
+    const isUp = change >= 0;
+    const sign = isUp ? "+" : "";
+    const size = 16;
+    const pixels = Buffer.alloc(size * size * 4);
+    const bgColor = { b: 40, g: 40, r: 40, a: 255 };
+    const upColor = { b: 79, g: 77, r: 255, a: 255 };
+    const downColor = { b: 26, g: 196, r: 82, a: 255 };
+    const barColor = isUp ? upColor : downColor;
+    const maxChange = 10;
+    const absChange = Math.min(Math.abs(change), maxChange);
+    const barHeight = Math.max(2, Math.round(absChange / maxChange * (size - 4)));
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const offset = (y * size + x) * 4;
+        let color = bgColor;
+        const barWidth = 8;
+        const barLeft = (size - barWidth) / 2;
+        const barRight = barLeft + barWidth;
+        if (x >= barLeft && x < barRight) {
+          if (isUp) {
+            const barTop = size - 2 - barHeight;
+            if (y >= barTop && y < size - 2) {
+              color = barColor;
+            }
+          } else {
+            if (y >= 2 && y < 2 + barHeight) {
+              color = barColor;
+            }
+          }
+        }
+        if (y === Math.floor(size / 2) && x >= 1 && x < size - 1) {
+          color = { b: 100, g: 100, r: 100, a: 255 };
+        }
+        pixels[offset] = color.b;
+        pixels[offset + 1] = color.g;
+        pixels[offset + 2] = color.r;
+        pixels[offset + 3] = color.a;
+      }
+    }
+    const icon = nativeImage.createFromBuffer(pixels, {
+      width: size,
+      height: size
+    });
+    tray.setImage(icon);
+    tray.setToolTip(`${data.name}: ${data.price} (${sign}${change.toFixed(2)}%)`);
+  } catch (e) {
+    console.error("更新托盘图标失败:", e);
+  }
 });
-f.on("before-quit", () => {
-  v.isQuitting = !0;
+ipcMain.on("update-float-window", (_event, data) => {
+  if (floatWin && !floatWin.isDestroyed()) {
+    floatWin.webContents.send("stock-data-update", data);
+  }
 });
-f.on("activate", () => {
-  D.getAllWindows().length === 0 && V();
+ipcMain.on("close-float-window", () => {
+  console.log("收到关闭悬浮窗请求");
+  if (floatWin && !floatWin.isDestroyed()) {
+    floatWin.close();
+    floatWin = null;
+    console.log("悬浮窗已关闭");
+  }
 });
-f.whenReady().then(() => {
-  G(), V(), M();
+ipcMain.on("show-notification", (_event, data) => {
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title: data.title,
+      body: data.body,
+      icon: getTrayIconPath()
+    });
+    notification.on("click", () => {
+      if (win) {
+        win.show();
+        win.focus();
+      }
+    });
+    notification.show();
+    console.log("系统通知已发送:", data.title);
+  }
+});
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+app.on("before-quit", () => {
+  appWithFlags.isQuitting = true;
+});
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+app.whenReady().then(() => {
+  createTray();
+  createWindow();
+  createFloatWindow();
 });
