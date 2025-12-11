@@ -1,13 +1,19 @@
 {
-  "name": "frontend",
+  "name": "stock-monitor",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.1",
+  "description": "股票监控助手 - 实时行情监控与AI分析",
+  "author": "Stock Monitor Team",
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:electron": "npm run build && electron-builder",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -31,6 +37,54 @@
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6",
     "vue-tsc": "^3.1.4",
-    "wait-on": "^9.0.3"
+    "wait-on": "^9.0.3",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.stockmonitor.app",
+    "productName": "股票监控助手",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!venv/**",
+          "!__pycache__/**",
+          "!*.pyc"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/stock.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "股票监控助手"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "public/stock.ico"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "public/stock.ico"
+    }
   }
 }

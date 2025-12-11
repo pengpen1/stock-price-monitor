@@ -188,8 +188,10 @@ function createTray() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1200,
+    height: 750,
+    minWidth: 1000,
+    minHeight: 600,
     icon: getTrayIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
