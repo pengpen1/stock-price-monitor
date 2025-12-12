@@ -41,7 +41,8 @@
         <div
           v-for="idx in indexList"
           :key="idx.code"
-          class="bg-white rounded-xl p-3 shadow-sm border border-slate-100"
+          class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow"
+          @click="openIndexDetail(idx.code)"
         >
           <div class="text-xs text-slate-500">{{ idx.name }}</div>
           <div class="flex items-baseline gap-2">
@@ -56,6 +57,28 @@
             </span>
           </div>
         </div>
+        <!-- 涨跌统计卡片 -->
+        <!-- <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+          <div class="text-xs text-slate-500 mb-2">涨跌统计</div>
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col items-center">
+              <span class="text-base font-bold text-red-500">{{ marketStats.rise_count || 0 }}</span>
+              <span class="text-xs text-slate-400">上涨</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <span class="text-base font-bold text-slate-500">{{ marketStats.flat_count || 0 }}</span>
+              <span class="text-xs text-slate-400">平盘</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <span class="text-base font-bold text-green-500">{{ marketStats.fall_count || 0 }}</span>
+              <span class="text-xs text-slate-400">下跌</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-slate-100">
+            <span class="text-xs"><span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span>涨停 {{ marketStats.limit_up || 0 }}</span>
+            <span class="text-xs"><span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>跌停 {{ marketStats.limit_down || 0 }}</span>
+          </div>
+        </div> -->
       </div>
 
       <!-- 添加股票 -->
@@ -563,6 +586,12 @@
 
     <!-- 使用手册弹窗 -->
     <UserGuideModal v-model:visible="showUserGuide" />
+
+    <!-- 大盘详情弹窗 -->
+    <IndexDetailModal
+      v-model:visible="showIndexDetail"
+      :index-code="currentIndexCode"
+    />
   </div>
 </template>
 
@@ -581,13 +610,18 @@ import {
   setStockGroup,
   addGroupApi,
   deleteGroupApi,
+  getMarketStats,
 } from "../api";
 import AIAnalysisModal from "./AIAnalysisModal.vue";
 import ChangelogModal from "./ChangelogModal.vue";
 import UserGuideModal from "./UserGuideModal.vue";
+import IndexDetailModal from "./IndexDetailModal.vue";
 
 const { locale } = useI18n();
 const emit = defineEmits(["openSettings", "openDetail"]);
+
+// 市场涨跌统计
+const marketStats = ref<any>({});
 
 // 响应式状态
 const newStockCode = ref("");
@@ -638,10 +672,20 @@ const aiType = ref<"fast" | "precise">("fast");
 const showChangelog = ref(false);
 const showUserGuide = ref(false);
 
+// 大盘详情弹窗
+const showIndexDetail = ref(false);
+const currentIndexCode = ref("");
+
 const openAIModal = (stock: any, type: "fast" | "precise") => {
   aiStockCode.value = stock.code;
   aiType.value = type;
   showAiModal.value = true;
+};
+
+// 打开大盘详情
+const openIndexDetail = (code: string) => {
+  currentIndexCode.value = code;
+  showIndexDetail.value = true;
 };
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -970,10 +1014,25 @@ const fetchData = async () => {
 
     updateTray();
     if (res.focused_data) updateTrayIcon(res.focused_data);
+    
+    // 获取市场涨跌统计
+    // fetchMarketStats();
   } catch (error) {
     console.error("获取数据失败:", error);
   }
 };
+
+// 获取市场涨跌统计
+// const fetchMarketStats = async () => {
+//   try {
+//     const res = await getMarketStats();
+//     if (res.status === "success") {
+//       marketStats.value = res.stats || {};
+//     }
+//   } catch (e) {
+//     console.error("获取涨跌统计失败:", e);
+//   }
+// };
 
 const checkAlerts = async () => {
   try {

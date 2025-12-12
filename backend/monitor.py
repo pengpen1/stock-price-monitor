@@ -115,6 +115,10 @@ class StockMonitor:
         self.index_data: Dict[str, dict] = {}
         # 大盘指数代码
         self.index_codes = ["sh000001", "sz399001", "sz399006", "sh000300"]  # 上证、深证、创业板、沪深300
+        # 市场涨跌统计
+        self.market_stats: Dict[str, any] = {}
+        # 涨跌家数历史（最近30天）
+        self.market_stats_history: List[Dict] = []
         
         self._load_data()
     
@@ -351,15 +355,15 @@ class StockMonitor:
                     continue
                 
                 # 指数数据格式：名称,今开,昨收,当前点位,最高,最低,成交量,成交额,...
-                # 注意：指数的字段顺序和股票不同
                 name = fields[0]
                 today_open = float(fields[1]) if fields[1] else 0
                 pre_close = float(fields[2]) if fields[2] else 0
-                price = float(fields[3]) if fields[3] else 0  # 当前点位在第4个字段
+                price = float(fields[3]) if fields[3] else 0
                 high = float(fields[4]) if fields[4] else 0
                 low = float(fields[5]) if fields[5] else 0
+                volume = fields[6] if len(fields) > 6 else "0"
+                amount = fields[7] if len(fields) > 7 else "0"
                 
-                # 如果当前价为0，可能是非交易时间，使用昨收
                 if price == 0:
                     price = pre_close
                 
@@ -375,10 +379,196 @@ class StockMonitor:
                     "pre_close": f"{pre_close:.2f}",
                     "open": f"{today_open:.2f}",
                     "high": f"{high:.2f}",
-                    "low": f"{low:.2f}"
+                    "low": f"{low:.2f}",
+                    "volume": volume,
+                    "amount": amount
                 }
         except Exception as e:
             print(f"获取大盘指数失败: {e}")
+        
+        # 同时获取市场涨跌统计
+        self.fetch_market_stats()
+    
+    def fetch_market_stats(self):
+        """获取市场涨跌家数统计"""
+        try:
+            # 使用东方财富涨跌分布接口
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            
+            # 获取A股涨跌统计
+            url = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f3"
+            resp = requests.get(url, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            total = data.get("data", {}).get("total", 0)
+            
+            # 获取上涨股票数量
+            url_up = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f3&fid=f3&filter=(f3>0)"
+            resp_up = requests.get(url_up, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            rise_count = resp_up.json().get("data", {}).get("total", 0)
+            
+            # 获取下跌股票数量
+            url_down = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f3&fid=f3&filter=(f3<0)"
+            resp_down = requests.get(url_down, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            fall_count = resp_down.json().get("data", {}).get("total", 0)
+            
+            # 获取涨停数量
+            url_limit_up = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f3&fid=f3&filter=(f3>=9.9)"
+            resp_limit_up = requests.get(url_limit_up, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            limit_up = resp_limit_up.json().get("data", {}).get("total", 0)
+            
+            # 获取跌停数量
+            url_limit_down = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f3&fid=f3&filter=(f3<=-9.9)"
+            resp_limit_down = requests.get(url_limit_down, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            limit_down = resp_limit_down.json().get("data", {}).get("total", 0)
+            
+            flat_count = total - rise_count - fall_count
+            if flat_count < 0:
+                flat_count = 0
+            
+            self.market_stats = {
+                "rise_count": rise_count,
+                "fall_count": fall_count,
+                "flat_count": flat_count,
+                "limit_up": limit_up,
+                "limit_down": limit_down,
+                "update_time": datetime.now().strftime("%H:%M:%S")
+            }
+            print(f"涨跌统计: 涨{rise_count} 跌{fall_count} 平{flat_count} 涨停{limit_up} 跌停{limit_down}")
+        except Exception as e:
+            print(f"获取市场涨跌统计失败: {e}")
+            self._fetch_market_stats_backup()
+    
+    def _fetch_market_stats_backup(self):
+        """备用方案：使用新浪接口获取涨跌统计"""
+        try:
+            headers = {"Referer": "https://finance.sina.com.cn/", "User-Agent": "Mozilla/5.0"}
+            # 新浪市场统计接口
+            url = "https://hq.sinajs.cn/list=sh000001"
+            resp = requests.get(url, headers=headers, timeout=5, proxies={"http": None, "https": None})
+            # 暂时设置默认值
+            self.market_stats = {
+                "rise_count": 0,
+                "fall_count": 0,
+                "flat_count": 0,
+                "limit_up": 0,
+                "limit_down": 0,
+                "update_time": datetime.now().strftime("%H:%M:%S")
+            }
+        except:
+            pass
+    
+    def get_market_stats(self) -> dict:
+        """获取市场涨跌统计"""
+        return {"status": "success", "stats": self.market_stats}
+    
+    def get_market_stats_history(self, days: int = 30) -> dict:
+        """获取涨跌家数历史数据"""
+        try:
+            # 使用东方财富历史数据接口
+            url = f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000001&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=0&end=20500101&lmt={days}"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            result = []
+            if data.get("data") and data["data"].get("klines"):
+                for line in data["data"]["klines"]:
+                    parts = line.split(",")
+                    if len(parts) >= 7:
+                        result.append({
+                            "date": parts[0],
+                            "close": float(parts[2]),
+                            "change_pct": float(parts[5]) if parts[5] else 0,
+                            "volume": int(float(parts[6])) if parts[6] else 0
+                        })
+            return {"status": "success", "data": result[-days:]}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    def get_index_detail(self, code: str) -> dict:
+        """获取大盘指数详情（分时、K线、涨跌统计历史）"""
+        code = code if code.startswith("sh") or code.startswith("sz") else f"sh{code}"
+        basic = self.index_data.get(code, {})
+        minute = self.get_index_minute_data(code)
+        kline = self.get_index_kline_data(code, days=60)
+        stats_history = self.get_market_stats_history(30)
+        
+        return {
+            "status": "success",
+            "basic": basic,
+            "minute": minute.get("data", []),
+            "kline": kline.get("data", []),
+            "stats_history": stats_history.get("data", []),
+            "current_stats": self.market_stats
+        }
+    
+    def get_index_minute_data(self, code: str) -> dict:
+        """获取指数分时数据"""
+        try:
+            # 转换代码格式
+            if code.startswith("sh"):
+                secid = f"1.{code[2:]}"
+            else:
+                secid = f"0.{code[2:]}"
+            
+            url = f"https://push2.eastmoney.com/api/qt/stock/trends2/get?secid={secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11&fields2=f51,f52,f53,f54,f55,f56,f57,f58&iscr=0&ndays=2"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            result = []
+            if data.get("data") and data["data"].get("trends"):
+                pre_close = data["data"].get("preClose", 0)
+                for line in data["data"]["trends"]:
+                    parts = line.split(",")
+                    if len(parts) >= 6:
+                        time_str = parts[0]
+                        date_part = time_str[:10] if len(time_str) >= 10 else ""
+                        time_part = time_str[-5:] if len(time_str) >= 5 else ""
+                        price = float(parts[2]) if parts[2] else 0
+                        result.append({
+                            "date": date_part,
+                            "time": time_part,
+                            "price": price,
+                            "avg_price": float(parts[3]) if parts[3] else 0,
+                            "volume": int(float(parts[5])) if parts[5] else 0,
+                            "pre_close": pre_close
+                        })
+            return {"status": "success", "data": result}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    def get_index_kline_data(self, code: str, days: int = 60) -> dict:
+        """获取指数K线数据"""
+        try:
+            if code.startswith("sh"):
+                secid = f"1.{code[2:]}"
+            else:
+                secid = f"0.{code[2:]}"
+            
+            url = f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid={secid}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=0&end=20500101&lmt={days}"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            result = []
+            if data.get("data") and data["data"].get("klines"):
+                for line in data["data"]["klines"]:
+                    parts = line.split(",")
+                    if len(parts) >= 7:
+                        result.append({
+                            "date": parts[0],
+                            "open": float(parts[1]),
+                            "close": float(parts[2]),
+                            "high": float(parts[3]),
+                            "low": float(parts[4]),
+                            "volume": int(float(parts[5])),
+                            "amount": float(parts[6])
+                        })
+            return {"status": "success", "data": result}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
     def set_focused_stock(self, code: str):
         """设置重点关注的股票"""

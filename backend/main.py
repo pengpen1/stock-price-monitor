@@ -112,6 +112,19 @@ def get_kline_data(code: str, period: str = "day", count: int = 120):
 def get_money_flow(code: str):
     return monitor.get_money_flow(code)
 
+# 大盘指数详情 API
+@app.get("/index/{code}/detail")
+def get_index_detail(code: str):
+    return monitor.get_index_detail(code)
+
+@app.get("/market/stats")
+def get_market_stats():
+    return monitor.get_market_stats()
+
+@app.get("/market/stats/history")
+def get_market_stats_history(days: int = 30):
+    return monitor.get_market_stats_history(days)
+
 class AnalyzeRequest(BaseModel):
     code: str
     type: str  # fast | precise
@@ -153,17 +166,32 @@ def analyze_stock(req: AnalyzeRequest):
     if req.type == "fast":
         minute = monitor.get_minute_data(req.code).get("data", [])
         kline = monitor.get_kline_data(req.code, "day", 120).get("data", [])
+        # 快速分析：当天大盘数据
+        market_data = {
+            "index": monitor.index_data,
+            "stats": monitor.market_stats,
+            "days": 1
+        }
     else:
         minute = monitor.get_minute_data(req.code).get("data", []) 
         kline = monitor.get_kline_data(req.code, "day", 240).get("data", [])
+        # 精准分析：最近3天大盘数据
+        stats_history = monitor.get_market_stats_history(3).get("data", [])
+        market_data = {
+            "index": monitor.index_data,
+            "stats": monitor.market_stats,
+            "stats_history": stats_history,
+            "days": 3
+        }
         
-    # 格式化提示词
-    prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs)
+    # 格式化提示词（包含大盘数据）
+    prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs, market_data)
     
     # 调用 LLM（支持代理）
     result = AIService.call_llm(req.provider, req.api_key, req.model, prompt, req.proxy)
     
-    return {"status": "success", "result": result}
+    # 返回结果和 prompt（用于前端展示）
+    return {"status": "success", "result": result, "prompt": prompt}
 
 # 导出配置数据
 @app.get("/data/export")

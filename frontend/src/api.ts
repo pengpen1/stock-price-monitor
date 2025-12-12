@@ -109,6 +109,24 @@ export const getMoneyFlow = async (code: string) => {
   return response.data;
 };
 
+// 获取大盘指数详情
+export const getIndexDetail = async (code: string) => {
+  const response = await api.get(`/index/${code}/detail`);
+  return response.data;
+};
+
+// 获取市场涨跌统计
+export const getMarketStats = async () => {
+  const response = await api.get('/market/stats');
+  return response.data;
+};
+
+// 获取涨跌统计历史
+export const getMarketStatsHistory = async (days: number = 30) => {
+  const response = await api.get('/market/stats/history', { params: { days } });
+  return response.data;
+};
+
 // 获取 AI 模型列表
 export const getAIModels = async (provider: string, apiKey: string, proxy?: string) => {
   const response = await api.post('/ai/models', {

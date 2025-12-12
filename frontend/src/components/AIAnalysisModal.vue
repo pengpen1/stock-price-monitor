@@ -90,12 +90,38 @@
 
                 <!-- Result -->
                 <div v-else-if="step === 'result'" class="space-y-4">
+                    <!-- Prompt 消息流展示 -->
+                    <div v-if="promptText" class="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
+                        <div 
+                            @click="showPrompt = !showPrompt"
+                            class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-700/30 transition-colors"
+                        >
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400 text-sm">📝 prompt</span>
+                                <span class="text-xs text-gray-500">({{ promptText.length }} 字符)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    @click.stop="copyPrompt"
+                                    class="px-2 py-1 text-xs text-blue-400 border border-blue-500/50 rounded hover:bg-blue-500/20 transition-colors"
+                                >
+                                    复制
+                                </button>
+                                <span class="text-gray-500 text-sm">{{ showPrompt ? '▼' : '▶' }}</span>
+                            </div>
+                        </div>
+                        <div v-if="showPrompt" class="border-t border-gray-700/50">
+                            <pre class="p-4 text-xs text-gray-300 overflow-auto max-h-64 whitespace-pre-wrap font-mono">{{ promptText }}</pre>
+                        </div>
+                    </div>
+
+                    <!-- 分析结果 -->
                     <div class="rendered-markdown bg-gray-800/30 p-8 rounded-xl border border-gray-700/50"
                         v-html="renderedResult"></div>
                     <div class="flex justify-end pt-4">
                         <button @click="step = 'input'" v-if="type === 'precise'"
                             class="px-4 py-2 border border-blue-500 text-blue-400 rounded hover:bg-blue-500/10 mr-3 transition-colors">重新调整参数</button>
-                        <button @click="step = 'loading'; startAnalysis()"
+                        <button @click="showPrompt = false; step = 'loading'; startAnalysis()"
                             class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white transition-colors">重新生成</button>
                     </div>
                 </div>
@@ -126,6 +152,8 @@ const inputs = ref({
     extraText: ''
 });
 const result = ref('');
+const promptText = ref(''); // 保存发送给大模型的 prompt
+const showPrompt = ref(false); // 是否展开 prompt
 const config = ref<{ provider: string, apiKey: string, model: string, proxy?: string } | null>(null);
 
 const hasConfig = computed(() => !!config.value?.apiKey);
@@ -202,14 +230,27 @@ const startAnalysis = async () => {
 
         if (res.status === 'success') {
             result.value = res.result;
+            promptText.value = res.prompt || ''; // 保存 prompt
             step.value = 'result';
         } else {
             result.value = `**分析失败**: ${res.message}`;
+            promptText.value = '';
             step.value = 'result';
         }
     } catch (e: any) {
         result.value = `**发生错误**: ${e.message || '未知错误'}`;
+        promptText.value = '';
         step.value = 'result';
+    }
+};
+
+// 复制 prompt 到剪贴板
+const copyPrompt = async () => {
+    try {
+        await navigator.clipboard.writeText(promptText.value);
+        // 可以添加一个提示
+    } catch (e) {
+        console.error('复制失败:', e);
     }
 };
 </script>
