@@ -30,14 +30,21 @@ backend/data/stocks.json
 
 # Python
 backend/venv/
-backend/__pycache__/
 backend/dist/
 backend/build/
+backend/__pycache__/
+__pycache__/
 *.pyc
 *.pyo
 .env
 *.env
 
+# Electron 打包输出
+dist-electron/
+
 # 打包临时文件
 frontend/resources/
 frontend/release/
+
+# Windows 空设备文件（误创建）
+nul
