@@ -4,10 +4,74 @@ import requests
 from typing import List, Dict, Optional
 from datetime import datetime
 import os
+import sys
 from pathlib import Path
 
-# 配置文件路径
-CONFIG_DIR = Path(__file__).parent / "data"
+def get_default_data_dir() -> Path:
+    """
+    获取默认数据存储目录
+    - 打包后：使用用户数据目录 %APPDATA%/stock-monitor（Windows）或 ~/.stock-monitor（Mac/Linux）
+    - 开发模式：使用项目目录下的 data 文件夹
+    """
+    if getattr(sys, 'frozen', False):
+        # 打包后，使用用户数据目录
+        if sys.platform == 'win32':
+            base = Path(os.environ.get('APPDATA', os.path.expanduser('~')))
+        else:
+            base = Path.home()
+        data_dir = base / 'stock-monitor' / 'data'
+    else:
+        # 开发模式，使用项目目录
+        data_dir = Path(__file__).parent / "data"
+    return data_dir
+
+def get_config_file() -> Path:
+    """获取全局配置文件路径（存储自定义数据路径等）"""
+    if getattr(sys, 'frozen', False):
+        if sys.platform == 'win32':
+            base = Path(os.environ.get('APPDATA', os.path.expanduser('~')))
+        else:
+            base = Path.home()
+        return base / 'stock-monitor' / 'config.json'
+    else:
+        return Path(__file__).parent / "config.json"
+
+def load_custom_data_path() -> Optional[str]:
+    """从全局配置加载自定义数据路径"""
+    config_file = get_config_file()
+    if config_file.exists():
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('data_path')
+        except:
+            pass
+    return None
+
+def save_custom_data_path(path: str):
+    """保存自定义数据路径到全局配置"""
+    config_file = get_config_file()
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    config = {}
+    if config_file.exists():
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+        except:
+            pass
+    config['data_path'] = path
+    with open(config_file, 'w', encoding='utf-8') as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+def get_data_dir() -> Path:
+    """获取实际使用的数据目录（优先使用自定义路径）"""
+    custom_path = load_custom_data_path()
+    if custom_path and Path(custom_path).exists():
+        return Path(custom_path)
+    return get_default_data_dir()
+
+# 配置文件路径（初始化时设置，后续可能动态更新）
+CONFIG_DIR = get_data_dir()
 STOCKS_FILE = CONFIG_DIR / "stocks.json"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 ALERTS_FILE = CONFIG_DIR / "alerts.json"
@@ -56,6 +120,7 @@ class StockMonitor:
     
     def _ensure_data_dir(self):
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"数据目录: {CONFIG_DIR}")
     
     def _load_data(self):
         """从本地文件加载数据"""
@@ -663,3 +728,126 @@ class StockMonitor:
     def stop(self):
         self.running = False
         print("监控已停止")
+
+    # ========== 数据导入导出 ==========
+    def export_data(self) -> dict:
+        """导出所有配置数据"""
+        stocks_data = {}
+        settings_data = {}
+        alerts_data = {}
+        
+        if STOCKS_FILE.exists():
+            try:
+                with open(STOCKS_FILE, 'r', encoding='utf-8') as f:
+                    stocks_data = json.load(f)
+            except:
+                pass
+        
+        if SETTINGS_FILE.exists():
+            try:
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    settings_data = json.load(f)
+            except:
+                pass
+        
+        if ALERTS_FILE.exists():
+            try:
+                with open(ALERTS_FILE, 'r', encoding='utf-8') as f:
+                    alerts_data = json.load(f)
+            except:
+                pass
+        
+        return {
+            "status": "success",
+            "data": {
+                "stocks": stocks_data,
+                "settings": settings_data,
+                "alerts": alerts_data,
+                "export_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "version": "1.0.1"
+            }
+        }
+    
+    def import_data(self, stocks: Optional[Dict], settings: Optional[Dict], alerts: Optional[Dict]) -> dict:
+        """导入配置数据"""
+        imported = []
+        
+        try:
+            self._ensure_data_dir()
+            
+            if stocks:
+                with open(STOCKS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(stocks, f, ensure_ascii=False, indent=2)
+                self.stocks = stocks.get('stocks', [])
+                self.focused_stock = stocks.get('focused_stock')
+                self.stock_groups = stocks.get('groups', {})
+                self.group_list = stocks.get('group_list', [])
+                imported.append('股票列表')
+            
+            if settings:
+                with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(settings, f, ensure_ascii=False, indent=2)
+                self.settings.update(settings)
+                imported.append('设置')
+            
+            if alerts:
+                with open(ALERTS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(alerts, f, ensure_ascii=False, indent=2)
+                self.alerts = alerts
+                imported.append('预警配置')
+            
+            return {
+                "status": "success",
+                "message": f"已导入: {', '.join(imported)}" if imported else "无数据导入"
+            }
+        except Exception as e:
+            return {"status": "error", "message": f"导入失败: {str(e)}"}
+    
+    # ========== 数据路径管理 ==========
+    def get_data_path(self) -> dict:
+        """获取当前数据存储路径"""
+        return {
+            "status": "success",
+            "current_path": str(CONFIG_DIR),
+            "default_path": str(get_default_data_dir()),
+            "is_custom": load_custom_data_path() is not None and load_custom_data_path() != ""
+        }
+    
+    def set_data_path(self, new_path: str) -> dict:
+        """设置自定义数据存储路径"""
+        global CONFIG_DIR, STOCKS_FILE, SETTINGS_FILE, ALERTS_FILE
+        
+        if not new_path:
+            # 清除自定义路径，恢复默认
+            save_custom_data_path("")
+            CONFIG_DIR = get_default_data_dir()
+            STOCKS_FILE = CONFIG_DIR / "stocks.json"
+            SETTINGS_FILE = CONFIG_DIR / "settings.json"
+            ALERTS_FILE = CONFIG_DIR / "alerts.json"
+            self._load_data()
+            return {
+                "status": "success",
+                "message": "已恢复默认数据路径",
+                "path": str(CONFIG_DIR)
+            }
+        
+        try:
+            new_dir = Path(new_path)
+            new_dir.mkdir(parents=True, exist_ok=True)
+            
+            save_custom_data_path(new_path)
+            
+            CONFIG_DIR = new_dir
+            STOCKS_FILE = CONFIG_DIR / "stocks.json"
+            SETTINGS_FILE = CONFIG_DIR / "settings.json"
+            ALERTS_FILE = CONFIG_DIR / "alerts.json"
+            
+            self._load_data()
+            
+            return {
+                "status": "success",
+                "message": f"数据路径已更新为: {new_path}",
+                "path": str(CONFIG_DIR)
+            }
+        except Exception as e:
+            return {"status": "error", "message": f"设置路径失败: {str(e)}"}

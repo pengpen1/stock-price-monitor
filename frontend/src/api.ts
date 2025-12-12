@@ -141,4 +141,34 @@ export const analyzeStock = async (
   return response.data;
 };
 
+// ========== 数据导入导出 ==========
+
+// 导入配置数据
+export const importData = async (data: {
+  stocks?: Record<string, any>;
+  settings?: Record<string, any>;
+  alerts?: Record<string, any>;
+}) => {
+  const response = await api.post('/data/import', data);
+  return response.data;
+};
+
+// 获取数据存储路径
+export const getDataPath = async () => {
+  const response = await api.get('/data/path');
+  return response.data;
+};
+
+// 设置数据存储路径
+export const setDataPath = async (path: string) => {
+  const response = await api.post('/data/path', { path });
+  return response.data;
+};
+
+// 导出配置数据
+export const exportData = async () => {
+  const response = await api.get('/data/export');
+  return response.data;
+};
+
 export default api;

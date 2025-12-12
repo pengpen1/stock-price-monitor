@@ -79,10 +79,18 @@ class AIService:
         
         if HAS_HTTPX:
             # 使用 httpx（更好的代理和 SSL 支持）
-            proxies = AIService._get_proxies(proxy)
+            # 构建代理地址
+            proxy_url = None
+            if proxy:
+                proxy = proxy.strip()
+                if not proxy.startswith('http://') and not proxy.startswith('https://'):
+                    proxy_url = f'http://{proxy}'
+                else:
+                    proxy_url = proxy
+            
             try:
                 with httpx.Client(
-                    proxies=proxies,
+                    proxy=proxy_url,  # httpx 新版使用 proxy 而不是 proxies
                     timeout=timeout,
                     verify=False,  # 跳过 SSL 验证
                     follow_redirects=True

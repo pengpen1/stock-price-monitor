@@ -145,6 +145,62 @@
           </div>
         </div>
 
+        <!-- 数据管理 -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <h2 class="text-lg font-semibold text-slate-700 mb-4">数据管理</h2>
+          
+          <div class="space-y-4">
+            <!-- 数据存储路径 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-2">数据存储路径</label>
+              <div class="flex gap-2">
+                <input 
+                  v-model="dataPath.current" 
+                  type="text" 
+                  class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="留空使用默认路径"
+                />
+                <button 
+                  @click="applyDataPath"
+                  :disabled="savingPath"
+                  class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors text-sm whitespace-nowrap"
+                >
+                  {{ savingPath ? '保存中...' : '应用' }}
+                </button>
+                <button 
+                  @click="resetDataPath"
+                  class="px-4 py-2 text-slate-500 hover:text-slate-700 transition-colors text-sm whitespace-nowrap"
+                >
+                  恢复默认
+                </button>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                默认路径: {{ dataPath.default || '加载中...' }}
+                <span v-if="dataPath.isCustom" class="text-blue-500 ml-2">(当前使用自定义路径)</span>
+              </p>
+            </div>
+
+            <!-- 导入导出 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-2">配置导入/导出</label>
+              <div class="flex gap-2">
+                <button 
+                  @click="handleExport"
+                  :disabled="exporting"
+                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors text-sm"
+                >
+                  {{ exporting ? '导出中...' : '导出配置' }}
+                </button>
+                <label class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer transition-colors text-sm">
+                  导入配置
+                  <input type="file" accept=".json" @change="handleImport" class="hidden" />
+                </label>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">导出/导入股票列表、分组、设置、预警配置（不含 API Key）</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 保存按钮 -->
         <div class="flex justify-end gap-3">
           <button 
@@ -174,7 +230,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSettings, updateSettings, getAIModels } from '../api'
+import { getSettings, updateSettings, getAIModels, exportData, importData, getDataPath, setDataPath } from '../api'
 
 const { t } = useI18n()
 const emit = defineEmits(['back'])
@@ -202,6 +258,15 @@ const modelError = ref('')
 const saving = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
+
+// 数据路径相关
+const dataPath = ref({
+  current: '',
+  default: '',
+  isCustom: false
+})
+const savingPath = ref(false)
+const exporting = ref(false)
 
 const messageClass = computed(() => {
   return messageType.value === 'success' 
@@ -321,7 +386,123 @@ const fetchModels = async () => {
   }
 }
 
+// 加载数据路径
+const loadDataPath = async () => {
+  try {
+    const res = await getDataPath()
+    if (res.status === 'success') {
+      dataPath.value = {
+        current: res.is_custom ? res.current_path : '',
+        default: res.default_path,
+        isCustom: res.is_custom
+      }
+    }
+  } catch (e) {
+    console.error('加载数据路径失败:', e)
+  }
+}
+
+// 应用数据路径
+const applyDataPath = async () => {
+  savingPath.value = true
+  try {
+    const res = await setDataPath(dataPath.value.current)
+    if (res.status === 'success') {
+      messageType.value = 'success'
+      message.value = res.message
+      await loadDataPath()
+    } else {
+      throw new Error(res.message)
+    }
+  } catch (e: any) {
+    messageType.value = 'error'
+    message.value = e.message || '设置路径失败'
+  } finally {
+    savingPath.value = false
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+// 恢复默认路径
+const resetDataPath = async () => {
+  dataPath.value.current = ''
+  await applyDataPath()
+}
+
+// 导出配置
+const handleExport = async () => {
+  exporting.value = true
+  try {
+    const res = await exportData()
+    if (res.status === 'success') {
+      // 移除敏感信息
+      const data = res.data
+      if (data.settings) {
+        delete data.settings.ai_api_key
+      }
+      
+      // 下载 JSON 文件
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `stock-monitor-config-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      messageType.value = 'success'
+      message.value = '配置已导出'
+    }
+  } catch (e: any) {
+    messageType.value = 'error'
+    message.value = e.message || '导出失败'
+  } finally {
+    exporting.value = false
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+// 导入配置
+const handleImport = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+    
+    // 确认导入
+    if (!confirm('导入将覆盖当前配置，是否继续？')) {
+      input.value = ''
+      return
+    }
+    
+    const res = await importData({
+      stocks: data.stocks,
+      settings: data.settings,
+      alerts: data.alerts
+    })
+    
+    if (res.status === 'success') {
+      messageType.value = 'success'
+      message.value = res.message
+      // 重新加载设置
+      await loadSettings()
+    } else {
+      throw new Error(res.message)
+    }
+  } catch (e: any) {
+    messageType.value = 'error'
+    message.value = e.message || '导入失败，请检查文件格式'
+  } finally {
+    input.value = ''
+    setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
 onMounted(() => {
   loadSettings()
+  loadDataPath()
 })
 </script>

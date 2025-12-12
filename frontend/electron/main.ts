@@ -5,6 +5,14 @@ import { spawn, ChildProcess } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// 单实例锁：确保只有一个应用实例运行
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // 如果获取不到锁，说明已有实例在运行，直接退出
+  app.quit()
+}
+
 // 用户数据目录（localStorage 会自动持久化到这里）
 const userDataPath = app.getPath('userData')
 
@@ -438,6 +446,15 @@ ipcMain.on('show-notification', (_event, data: { title: string; body: string }) 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
+  }
+})
+
+// 当第二个实例启动时，聚焦到已有窗口
+app.on('second-instance', () => {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    if (!win.isVisible()) win.show()
+    win.focus()
   }
 })
 

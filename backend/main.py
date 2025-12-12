@@ -121,6 +121,11 @@ class AnalyzeRequest(BaseModel):
     proxy: Optional[str] = None  # 代理地址，如 http://127.0.0.1:7890
     inputs: Optional[Dict] = {}
 
+class ImportDataRequest(BaseModel):
+    stocks: Optional[Dict] = None  # stocks.json 内容
+    settings: Optional[Dict] = None  # settings.json 内容
+    alerts: Optional[Dict] = None  # alerts.json 内容
+
 class ModelsRequest(BaseModel):
     provider: str
     api_key: str
@@ -159,6 +164,30 @@ def analyze_stock(req: AnalyzeRequest):
     result = AIService.call_llm(req.provider, req.api_key, req.model, prompt, req.proxy)
     
     return {"status": "success", "result": result}
+
+# 导出配置数据
+@app.get("/data/export")
+def export_data():
+    """导出所有配置数据（股票列表、设置、预警）"""
+    return monitor.export_data()
+
+# 导入配置数据
+@app.post("/data/import")
+def import_data(req: ImportDataRequest):
+    """导入配置数据"""
+    return monitor.import_data(req.stocks, req.settings, req.alerts)
+
+# 获取数据存储路径
+@app.get("/data/path")
+def get_data_path():
+    """获取当前数据存储路径"""
+    return monitor.get_data_path()
+
+# 设置数据存储路径
+@app.post("/data/path")
+def set_data_path(data: dict):
+    """设置自定义数据存储路径"""
+    return monitor.set_data_path(data.get("path", ""))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
