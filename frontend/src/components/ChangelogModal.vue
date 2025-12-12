@@ -66,14 +66,23 @@ defineProps<{
 
 const emit = defineEmits(['update:visible'])
 
-const currentVersion = '1.0.1'
+const currentVersion = '1.0.2'
 const releaseDate = '2025-12-12'
 
 // 更新日志数据
 const changelog = ref([
   {
-    version: '1.0.1',
+    version: '1.0.2',
     date: '2025-12-12',
+    changes: [
+      { type: 'feature', text: '大盘指数分时图，直观查看大盘走势' },
+      { type: 'feature', text: 'AI 分析 Prompt 完整展示，支持查看和复制' },
+      { type: 'feature', text: '配置导入导出功能，轻松备份和迁移设置' },
+    ]
+  },
+  {
+    version: '1.0.1',
+    date: '2025-12-11',
     changes: [
       { type: 'feature', text: 'AI 智能分析功能，支持 Gemini/GPT/Claude 多模型' },
       { type: 'feature', text: '代理配置支持，解决国内访问问题' },
