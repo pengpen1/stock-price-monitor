@@ -202,11 +202,17 @@ class StockMonitor:
 
     # ========== 股票管理 ==========
     def add_stock(self, code: str):
-        if code not in self.stocks:
-            self.stocks.append(code)
-            self._save_stocks()
-            return {"status": "success", "message": f"已添加 {code}"}
-        return {"status": "error", "message": "股票已存在"}
+        # 标准化股票代码（统一小写，添加前缀）
+        normalized = self._normalize_code(code.lower())
+        
+        # 检查是否已存在（包括不同格式的同一股票）
+        for existing in self.stocks:
+            if self._normalize_code(existing.lower()) == normalized:
+                return {"status": "error", "message": "股票已存在"}
+        
+        self.stocks.append(normalized)
+        self._save_stocks()
+        return {"status": "success", "message": f"已添加 {normalized}"}
 
     def remove_stock(self, code: str):
         removed = False
@@ -690,8 +696,10 @@ class StockMonitor:
         try:
             query_list = []
             for code in self.stocks:
-                if code.startswith("sh") or code.startswith("sz") or code.startswith("bj"):
-                    query_list.append(code)
+                # 统一转小写处理
+                code_lower = code.lower()
+                if code_lower.startswith("sh") or code_lower.startswith("sz") or code_lower.startswith("bj"):
+                    query_list.append(code_lower)
                 else:
                     if code.startswith("6"):
                         query_list.append(f"sh{code}")
@@ -700,7 +708,9 @@ class StockMonitor:
                     elif code.startswith("4") or code.startswith("8"):
                         query_list.append(f"bj{code}")
                     else:
-                        query_list.append(code)
+                        # 跳过无效代码
+                        print(f"跳过无效股票代码: {code}")
+                        continue
 
             codes_str = ",".join(query_list)
             url = f"http://hq.sinajs.cn/list={codes_str}"
