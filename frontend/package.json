@@ -54,16 +54,6 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "resources/stock-monitor-backend.exe",
-        "to": "backend/stock-monitor-backend.exe"
-      },
-      {
-        "from": "resources/data",
-        "to": "backend/data"
-      }
-    ],
     "win": {
       "target": [
         {
@@ -71,7 +61,17 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "public/stock.ico"
+      "icon": "public/stock.ico",
+      "extraResources": [
+        {
+          "from": "resources/stock-monitor-backend.exe",
+          "to": "backend/stock-monitor-backend.exe"
+        },
+        {
+          "from": "resources/data",
+          "to": "backend/data"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -82,11 +82,32 @@
     },
     "mac": {
       "target": ["dmg"],
-      "icon": "public/stock.ico"
+      "icon": "public/stock.png",
+      "extraResources": [
+        {
+          "from": "resources/stock-monitor-backend",
+          "to": "backend/stock-monitor-backend"
+        },
+        {
+          "from": "resources/data",
+          "to": "backend/data"
+        }
+      ]
     },
     "linux": {
       "target": ["AppImage"],
-      "icon": "public/stock.ico"
+      "icon": "public/stock.png",
+      "category": "Utility",
+      "extraResources": [
+        {
+          "from": "resources/stock-monitor-backend",
+          "to": "backend/stock-monitor-backend"
+        },
+        {
+          "from": "resources/data",
+          "to": "backend/data"
+        }
+      ]
     }
   }
 }

@@ -122,6 +122,11 @@ jobs:
           cp backend/dist/stock-monitor-backend frontend/resources/ || true
           cp -r backend/data frontend/resources/
       
+      - name: Convert icon to PNG
+        run: |
+          brew install imagemagick
+          magick frontend/public/stock.ico -resize 512x512 frontend/public/stock.png
+      
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
@@ -190,6 +195,12 @@ jobs:
           mkdir -p frontend/resources
           cp backend/dist/stock-monitor-backend frontend/resources/ || true
           cp -r backend/data frontend/resources/
+      
+      - name: Convert icon to PNG
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          convert frontend/public/stock.ico -resize 512x512 frontend/public/stock.png
       
       - name: Install frontend dependencies
         run: npm ci
