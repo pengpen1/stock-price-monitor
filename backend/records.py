@@ -186,6 +186,63 @@ class RecordsManager:
             "reason": r["reason"]
         } for r in records]
     
+    def calculate_position(self, stock_code: str) -> Dict:
+        """
+        根据交易记录计算当前持仓成本和数量
+        使用移动加权平均法计算成本
+        返回: {"cost_price": 成本价, "position": 持仓手数, "total_cost": 总成本}
+        """
+        result = self.get_trade_records(stock_code, 1000)  # 获取所有记录
+        records = result.get("records", [])
+        
+        if not records:
+            return {"cost_price": 0, "position": 0, "total_cost": 0}
+        
+        # 按时间正序排列
+        records = sorted(records, key=lambda x: x.get("trade_time", ""))
+        
+        position = 0  # 当前持仓手数
+        total_cost = 0  # 总成本
+        
+        for r in records:
+            trade_type = r.get("type", "")
+            price = r.get("price", 0)
+            quantity = r.get("quantity", 0)
+            
+            if trade_type == "B":  # 买入
+                # 增加持仓，更新总成本
+                total_cost += price * quantity * 100  # 1手=100股
+                position += quantity
+            elif trade_type == "S":  # 卖出
+                if position > 0:
+                    # 减少持仓，按比例减少成本
+                    sell_quantity = min(quantity, position)
+                    cost_per_share = total_cost / (position * 100) if position > 0 else 0
+                    total_cost -= cost_per_share * sell_quantity * 100
+                    position -= sell_quantity
+            elif trade_type == "T":  # 做T
+                # 做T不改变持仓数量，但可能影响成本
+                # 从reason中解析买卖价格
+                reason = r.get("reason", "")
+                import re
+                buy_match = re.search(r'买入[:：](\d+\.?\d*)', reason)
+                sell_match = re.search(r'卖出[:：](\d+\.?\d*)', reason)
+                if buy_match and sell_match:
+                    buy_price = float(buy_match.group(1))
+                    sell_price = float(sell_match.group(1))
+                    # 做T盈亏影响成本
+                    t_profit = (sell_price - buy_price) * quantity * 100
+                    total_cost -= t_profit  # 盈利降低成本，亏损增加成本
+        
+        # 计算成本价
+        cost_price = total_cost / (position * 100) if position > 0 else 0
+        
+        return {
+            "cost_price": round(cost_price, 3),
+            "position": position,
+            "total_cost": round(total_cost, 2)
+        }
+    
     # ========== 数据导出导入 ==========
     
     def export_records(self) -> Dict:

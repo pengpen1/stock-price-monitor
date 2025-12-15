@@ -133,7 +133,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import { marked } from 'marked';
-import { analyzeStock, getSettings } from '../api';
+import { analyzeStock, getSettings, getStockPosition } from '../api';
 
 const props = defineProps<{
     visible: boolean;
@@ -166,6 +166,8 @@ watch(() => props.visible, async (newVal) => {
     if (newVal) {
         await loadConfig();
         result.value = '';
+        promptText.value = '';
+        showPrompt.value = false;
 
         // 如果没有配置，就不进行后续判断了
         if (!config.value?.apiKey) {
@@ -177,9 +179,28 @@ watch(() => props.visible, async (newVal) => {
             startAnalysis();
         } else {
             step.value = 'input';
+            // 精准分析时自动加载持仓数据
+            await loadPosition();
         }
     }
 });
+
+// 加载持仓数据
+const loadPosition = async () => {
+    try {
+        const res = await getStockPosition(props.stockCode);
+        if (res && res.position > 0) {
+            inputs.value.costPrice = res.cost_price.toString();
+            inputs.value.position = (res.position * 100).toString(); // 手数转股数
+        } else {
+            // 没有持仓记录，清空
+            inputs.value.costPrice = '';
+            inputs.value.position = '';
+        }
+    } catch (e) {
+        console.error('加载持仓数据失败:', e);
+    }
+};
 
 // 从后端加载 AI 配置
 const loadConfig = async () => {

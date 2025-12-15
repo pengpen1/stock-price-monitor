@@ -274,4 +274,10 @@ export const getStockAIRecords = async (stockCode: string, limit: number = 50) =
   return response.data;
 };
 
+// 获取持仓计算结果
+export const getStockPosition = async (stockCode: string) => {
+  const response = await api.get(`/records/position/${stockCode}`);
+  return response.data;
+};
+
 export default api;

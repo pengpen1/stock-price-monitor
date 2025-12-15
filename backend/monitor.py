@@ -903,6 +903,175 @@ class StockMonitor:
             "kline": kline.get("data", []),
             "money_flow": money_flow.get("data", [])
         }
+    
+    def get_stock_extra_data(self, code: str) -> dict:
+        """
+        获取股票额外数据（用于精准分析）
+        包含：换手率、量比、振幅、均线、市盈率、市净率、总市值、流通市值、所属行业、北向资金、融资融券
+        """
+        code = self._normalize_code(code)
+        market = "1" if code.startswith("sh") else "0"
+        stock_code = code[2:]
+        
+        result = {
+            "turnover_rate": None,  # 换手率
+            "volume_ratio": None,   # 量比
+            "amplitude": None,      # 振幅
+            "pe_ratio": None,       # 市盈率
+            "pb_ratio": None,       # 市净率
+            "total_mv": None,       # 总市值
+            "circ_mv": None,        # 流通市值
+            "industry": None,       # 所属行业
+            "ma5": None,            # 5日均线
+            "ma10": None,           # 10日均线
+            "ma20": None,           # 20日均线
+            "ma60": None,           # 60日均线
+            "north_flow": None,     # 北向资金
+            "margin_balance": None, # 融资余额
+        }
+        
+        try:
+            # 使用东方财富接口获取详细数据
+            url = f"https://push2.eastmoney.com/api/qt/stock/get?secid={market}.{stock_code}&fields=f43,f44,f45,f46,f47,f48,f50,f51,f52,f55,f57,f58,f60,f61,f62,f84,f85,f100,f116,f117,f127,f128,f135,f136,f137,f138,f139,f140,f141,f142,f143,f144,f145,f146,f147,f148,f149,f150,f151,f152,f161,f162,f163,f164,f165,f166,f167,f168,f169,f170,f171,f172,f173,f174,f175,f176,f177,f178,f179,f180,f181,f182,f183,f184,f185,f186,f187,f188,f189,f190,f191,f192,f193,f194,f195,f196,f197,f198,f199,f200,f201,f202,f203,f204,f205,f206,f207,f208,f209,f210,f211,f212,f213,f214,f215,f216,f217,f218,f219,f220,f221,f222,f223,f224,f225,f226,f227,f228,f229,f230,f231,f232,f233,f234,f235,f236,f237,f238,f239,f240,f241,f242,f243,f244,f245,f246,f247,f248,f249,f250,f251,f252,f253,f254,f255,f256,f257,f258,f259,f260,f261,f262,f263,f264,f265,f266,f267,f268,f269,f270,f271,f272,f273,f274,f275,f276,f277,f278,f279,f280,f281,f282,f283,f284,f285,f286,f287,f288,f289,f290,f291,f292,f293"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            if data.get("data"):
+                d = data["data"]
+                # 换手率 f168
+                result["turnover_rate"] = d.get("f168")
+                # 量比 f50
+                result["volume_ratio"] = d.get("f50") / 100 if d.get("f50") else None
+                # 振幅 f171
+                result["amplitude"] = d.get("f171") / 100 if d.get("f171") else None
+                # 市盈率(动态) f162
+                result["pe_ratio"] = d.get("f162") / 100 if d.get("f162") else None
+                # 市净率 f167
+                result["pb_ratio"] = d.get("f167") / 100 if d.get("f167") else None
+                # 总市值 f116
+                result["total_mv"] = d.get("f116")
+                # 流通市值 f117
+                result["circ_mv"] = d.get("f117")
+                # 所属行业 f100
+                result["industry"] = d.get("f100")
+        except Exception as e:
+            print(f"获取股票额外数据失败: {e}")
+        
+        # 计算均线数据
+        try:
+            kline_result = self.get_kline_data(code, "day", 60)
+            kline_data = kline_result.get("data", [])
+            if kline_data:
+                closes = [k["close"] for k in kline_data]
+                if len(closes) >= 5:
+                    result["ma5"] = round(sum(closes[-5:]) / 5, 2)
+                if len(closes) >= 10:
+                    result["ma10"] = round(sum(closes[-10:]) / 10, 2)
+                if len(closes) >= 20:
+                    result["ma20"] = round(sum(closes[-20:]) / 20, 2)
+                if len(closes) >= 60:
+                    result["ma60"] = round(sum(closes[-60:]) / 60, 2)
+        except Exception as e:
+            print(f"计算均线失败: {e}")
+        
+        # 获取北向资金数据
+        try:
+            result["north_flow"] = self._get_north_flow(code)
+        except Exception as e:
+            print(f"获取北向资金失败: {e}")
+        
+        # 获取融资融券数据
+        try:
+            result["margin_balance"] = self._get_margin_data(code)
+        except Exception as e:
+            print(f"获取融资融券失败: {e}")
+        
+        return {"status": "success", "data": result}
+    
+    def _get_north_flow(self, code: str) -> dict:
+        """获取北向资金流入数据（最近5天）"""
+        code = self._normalize_code(code)
+        market = "1" if code.startswith("sh") else "0"
+        stock_code = code[2:]
+        
+        try:
+            # 东方财富北向资金接口
+            url = f"https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?secid={market}.{stock_code}&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56&klt=101&lmt=5"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            if data.get("data") and data["data"].get("klines"):
+                result = []
+                for line in data["data"]["klines"]:
+                    parts = line.split(",")
+                    if len(parts) >= 3:
+                        result.append({
+                            "date": parts[0],
+                            "net_flow": float(parts[1]) if parts[1] != "-" else 0,  # 主力净流入
+                        })
+                return result
+        except:
+            pass
+        return None
+    
+    def _get_margin_data(self, code: str) -> dict:
+        """获取融资融券数据"""
+        code = self._normalize_code(code)
+        market = "1" if code.startswith("sh") else "0"
+        stock_code = code[2:]
+        
+        try:
+            # 东方财富融资融券接口
+            url = f"https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPTA_WEB_RZRQ_GGMX&columns=ALL&filter=(SCODE%3D%22{stock_code}%22)&pageNumber=1&pageSize=5&sortTypes=-1&sortColumns=TRADE_DATE"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            if data.get("result") and data["result"].get("data"):
+                items = data["result"]["data"]
+                result = []
+                for item in items[:5]:
+                    result.append({
+                        "date": item.get("TRADE_DATE", "")[:10],
+                        "rzye": item.get("RZYE"),  # 融资余额
+                        "rqye": item.get("RQYE"),  # 融券余额
+                        "rzrqye": item.get("RZRQYE"),  # 融资融券余额
+                    })
+                return result
+        except:
+            pass
+        return None
+    
+    def get_dragon_tiger(self, code: str) -> dict:
+        """获取龙虎榜数据（如果有）"""
+        code = self._normalize_code(code)
+        stock_code = code[2:]
+        
+        try:
+            # 东方财富龙虎榜接口
+            url = f"https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_DAILYBILLBOARD_DETAILSNEW&columns=ALL&filter=(SECURITY_CODE%3D%22{stock_code}%22)&pageNumber=1&pageSize=5&sortTypes=-1&sortColumns=TRADE_DATE"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            data = resp.json()
+            
+            if data.get("result") and data["result"].get("data"):
+                items = data["result"]["data"]
+                result = []
+                for item in items[:5]:
+                    result.append({
+                        "date": item.get("TRADE_DATE", "")[:10],
+                        "reason": item.get("EXPLANATION"),  # 上榜原因
+                        "close": item.get("CLOSE_PRICE"),
+                        "change_pct": item.get("CHANGE_RATE"),
+                        "turnover_rate": item.get("TURNOVERRATE"),
+                        "net_buy": item.get("NET_BUY_AMT"),  # 净买入额
+                    })
+                return {"status": "success", "data": result}
+        except Exception as e:
+            print(f"获取龙虎榜失败: {e}")
+        return {"status": "success", "data": []}
 
     def start(self):
         self.running = True

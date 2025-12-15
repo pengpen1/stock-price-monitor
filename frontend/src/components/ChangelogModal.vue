@@ -79,7 +79,10 @@ const changelog = ref([
       { type: 'feature', text: 'K 线图交易标记，直观展示历史操作点位' },
       { type: 'feature', text: 'AI 分析自动记录，支持查看历史分析和信号' },
       { type: 'feature', text: 'AI 结构化输出，自动提取看涨/谨慎/看跌信号' },
-      { type: 'improve', text: '精准分析增加历史记录参考，分析更精准' },
+      { type: 'feature', text: '精准分析自动计算持仓成本和数量' },
+      { type: 'improve', text: '精准分析新增技术面数据：换手率、量比、振幅、均线' },
+      { type: 'improve', text: '精准分析新增基本面数据：市盈率、市净率、市值、行业' },
+      { type: 'improve', text: '精准分析新增市场情绪：北向资金、融资融券、龙虎榜' },
       { type: 'improve', text: '操作列下拉菜单，界面更简洁' },
     ]
   },

@@ -201,10 +201,15 @@ class AIService:
         market_data: Optional[Dict] = None,
         trade_history: Optional[List[Dict]] = None,
         ai_history: Optional[List[Dict]] = None,
+        money_flow: Optional[List[Dict]] = None,
+        money_flow_days: int = 2,
+        extra_data: Optional[Dict] = None,
+        dragon_tiger: Optional[List[Dict]] = None,
     ) -> str:
         """
-        将股票数据格式化为 LLM 提示词，重点突出成交量信息
+        将股票数据格式化为 LLM 提示词，重点突出成交量和资金流向信息
         包含用户交易记录和历史 AI 分析记录（用于精准分析）
+        新增：技术面数据（换手率、量比、振幅、均线）、基本面数据（PE/PB/市值/行业）、市场情绪数据（北向资金、融资融券、龙虎榜）
         """
         prompt_parts = []
 
@@ -225,6 +230,87 @@ class AIService:
             prompt_parts.append(
                 f"- 成交额: {AIService._format_volume(int(float(basic.get('amount', 0))))}"
             )
+        
+        # 1.1 技术面数据（精准分析时提供）
+        if extra_data:
+            prompt_parts.append(f"\n### 技术面指标\n")
+            if extra_data.get("turnover_rate") is not None:
+                prompt_parts.append(f"- 换手率: {extra_data['turnover_rate']}%")
+            if extra_data.get("volume_ratio") is not None:
+                prompt_parts.append(f"- 量比: {extra_data['volume_ratio']:.2f}")
+            if extra_data.get("amplitude") is not None:
+                prompt_parts.append(f"- 振幅: {extra_data['amplitude']:.2f}%")
+            
+            # 均线数据
+            ma_parts = []
+            if extra_data.get("ma5"):
+                ma_parts.append(f"MA5={extra_data['ma5']}")
+            if extra_data.get("ma10"):
+                ma_parts.append(f"MA10={extra_data['ma10']}")
+            if extra_data.get("ma20"):
+                ma_parts.append(f"MA20={extra_data['ma20']}")
+            if extra_data.get("ma60"):
+                ma_parts.append(f"MA60={extra_data['ma60']}")
+            if ma_parts:
+                prompt_parts.append(f"- 均线: {', '.join(ma_parts)}")
+                # 分析均线位置关系
+                current_price = float(basic.get('price', 0))
+                if current_price > 0:
+                    ma_analysis = []
+                    if extra_data.get("ma5") and current_price > extra_data['ma5']:
+                        ma_analysis.append("站上MA5")
+                    elif extra_data.get("ma5"):
+                        ma_analysis.append("跌破MA5")
+                    if extra_data.get("ma20") and current_price > extra_data['ma20']:
+                        ma_analysis.append("站上MA20")
+                    elif extra_data.get("ma20"):
+                        ma_analysis.append("跌破MA20")
+                    if ma_analysis:
+                        prompt_parts.append(f"- 均线位置: {', '.join(ma_analysis)}")
+            
+            # 基本面数据
+            prompt_parts.append(f"\n### 基本面数据\n")
+            if extra_data.get("pe_ratio") is not None:
+                prompt_parts.append(f"- 市盈率(PE): {extra_data['pe_ratio']:.2f}")
+            if extra_data.get("pb_ratio") is not None:
+                prompt_parts.append(f"- 市净率(PB): {extra_data['pb_ratio']:.2f}")
+            if extra_data.get("total_mv"):
+                prompt_parts.append(f"- 总市值: {AIService._format_volume(int(extra_data['total_mv']))}")
+            if extra_data.get("circ_mv"):
+                prompt_parts.append(f"- 流通市值: {AIService._format_volume(int(extra_data['circ_mv']))}")
+            if extra_data.get("industry"):
+                prompt_parts.append(f"- 所属行业: {extra_data['industry']}")
+            
+            # 北向资金
+            if extra_data.get("north_flow"):
+                prompt_parts.append(f"\n### 北向资金（最近5日）\n")
+                prompt_parts.append("| 日期 | 主力净流入 |")
+                prompt_parts.append("|---|---|")
+                for item in extra_data["north_flow"]:
+                    net = item.get("net_flow", 0)
+                    prompt_parts.append(f"| {item['date']} | {AIService._format_volume(int(net))} |")
+            
+            # 融资融券
+            if extra_data.get("margin_balance"):
+                prompt_parts.append(f"\n### 融资融券（最近5日）\n")
+                prompt_parts.append("| 日期 | 融资余额 | 融券余额 |")
+                prompt_parts.append("|---|---|---|")
+                for item in extra_data["margin_balance"]:
+                    rzye = AIService._format_volume(int(item.get("rzye", 0))) if item.get("rzye") else "-"
+                    rqye = AIService._format_volume(int(item.get("rqye", 0))) if item.get("rqye") else "-"
+                    prompt_parts.append(f"| {item['date']} | {rzye} | {rqye} |")
+        
+        # 龙虎榜数据
+        if dragon_tiger:
+            prompt_parts.append(f"\n### 龙虎榜（近期异动）\n")
+            prompt_parts.append("| 日期 | 上榜原因 | 涨跌幅 | 换手率 | 净买入 |")
+            prompt_parts.append("|---|---|---|---|---|")
+            for item in dragon_tiger:
+                net_buy = AIService._format_volume(int(item.get("net_buy", 0))) if item.get("net_buy") else "-"
+                prompt_parts.append(
+                    f"| {item['date']} | {item.get('reason', '-')} | "
+                    f"{item.get('change_pct', '-')}% | {item.get('turnover_rate', '-')}% | {net_buy} |"
+                )
 
         # 2. 用户附加信息（精准分析模式）
         if extra_info:
@@ -381,13 +467,69 @@ class AIService:
                 prompt_parts.append(f"| {a['datetime']} | {signal_str} | {a['summary']} |")
             prompt_parts.append("\n请对比之前的分析，说明走势是否符合预期，并给出新的判断。")
 
+        # 8. 资金流向数据
+        if money_flow:
+            prompt_parts.append(f"\n### 资金流向（最近{money_flow_days}天）\n")
+            
+            # 按日期分组资金流向数据
+            daily_flow = {}
+            for item in money_flow:
+                time_str = item.get("time", "")
+                date = time_str.split(" ")[0] if " " in time_str else time_str[:10]
+                if date not in daily_flow:
+                    daily_flow[date] = {
+                        "main_in": 0, "big_in": 0, "mid_in": 0, "small_in": 0, "super_in": 0
+                    }
+                daily_flow[date]["main_in"] += item.get("main_in", 0)
+                daily_flow[date]["big_in"] += item.get("big_in", 0)
+                daily_flow[date]["mid_in"] += item.get("mid_in", 0)
+                daily_flow[date]["small_in"] += item.get("small_in", 0)
+                daily_flow[date]["super_in"] += item.get("super_in", 0)
+            
+            # 取最近N天
+            sorted_dates = sorted(daily_flow.keys(), reverse=True)[:money_flow_days]
+            
+            if sorted_dates:
+                prompt_parts.append("| 日期 | 主力净流入 | 超大单 | 大单 | 中单 | 小单 |")
+                prompt_parts.append("|---|---|---|---|---|---|")
+                
+                for date in sorted(sorted_dates):
+                    flow = daily_flow[date]
+                    # 主力 = 超大单 + 大单
+                    main_net = flow["super_in"] + flow["big_in"]
+                    prompt_parts.append(
+                        f"| {date} | {AIService._format_volume(int(main_net))} | "
+                        f"{AIService._format_volume(int(flow['super_in']))} | "
+                        f"{AIService._format_volume(int(flow['big_in']))} | "
+                        f"{AIService._format_volume(int(flow['mid_in']))} | "
+                        f"{AIService._format_volume(int(flow['small_in']))} |"
+                    )
+                
+                # 计算总体资金流向趋势
+                total_main = sum(daily_flow[d]["super_in"] + daily_flow[d]["big_in"] for d in sorted_dates)
+                total_small = sum(daily_flow[d]["small_in"] for d in sorted_dates)
+                
+                prompt_parts.append(f"\n**资金流向分析:**")
+                if total_main > 0:
+                    prompt_parts.append(f"- 近{len(sorted_dates)}日主力净流入: {AIService._format_volume(int(total_main))}，主力资金看好")
+                else:
+                    prompt_parts.append(f"- 近{len(sorted_dates)}日主力净流出: {AIService._format_volume(int(abs(total_main)))}，主力资金撤离")
+                
+                if total_small > 0:
+                    prompt_parts.append(f"- 散户资金净流入: {AIService._format_volume(int(total_small))}")
+                else:
+                    prompt_parts.append(f"- 散户资金净流出: {AIService._format_volume(int(abs(total_small)))}")
+
         prompt_parts.append(f"\n### 分析要求\n")
         prompt_parts.append("请重点分析：")
         prompt_parts.append("1. 价量配合关系（放量上涨/缩量下跌等）")
-        prompt_parts.append("2. 成交量异动情况")
-        prompt_parts.append("3. 结合大盘环境判断个股走势")
-        prompt_parts.append("4. 短期趋势判断")
-        prompt_parts.append("5. 操作建议（买入/持有/卖出）")
+        prompt_parts.append("2. 成交量异动情况（换手率、量比是否异常）")
+        prompt_parts.append("3. 资金流向分析（主力动向、散户行为、北向资金）")
+        prompt_parts.append("4. 均线系统分析（多头/空头排列、支撑/压力位）")
+        prompt_parts.append("5. 估值分析（PE/PB是否合理、与行业对比）")
+        prompt_parts.append("6. 结合大盘环境判断个股走势")
+        prompt_parts.append("7. 短期趋势判断")
+        prompt_parts.append("8. 操作建议（买入/持有/卖出，以及具体价位建议）")
 
         return "\n".join(prompt_parts)
 
