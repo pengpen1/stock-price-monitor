@@ -753,6 +753,43 @@ class AIService:
         return {"signal": signal, "summary": summary}
 
     @staticmethod
+    def extract_prediction_from_result(result: str, current_price: float) -> List[Dict]:
+        """
+        从分析结果中提取价格预测数据
+        返回: [{"date": "2025-12-16", "price": 44.5, "change_pct": 2.2}, ...]
+        """
+        import re
+        from datetime import datetime, timedelta
+        
+        predictions = []
+        
+        # 尝试从结果中提取 prediction JSON 块
+        json_pattern = r'```json\s*(\{[^`]*"prediction"[^`]*\})\s*```'
+        match = re.search(json_pattern, result, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                if "prediction" in data and isinstance(data["prediction"], list):
+                    return data["prediction"]
+            except:
+                pass
+        
+        # 尝试匹配独立的 prediction 数组
+        pred_pattern = r'"prediction"\s*:\s*\[(.*?)\]'
+        match = re.search(pred_pattern, result, re.DOTALL)
+        if match:
+            try:
+                pred_str = "[" + match.group(1) + "]"
+                predictions = json.loads(pred_str)
+                if predictions:
+                    return predictions
+            except:
+                pass
+        
+        # 如果没有提取到，返回空列表
+        return []
+
+    @staticmethod
     def call_llm_with_signal(
         provider: str,
         api_key: str,
@@ -760,13 +797,52 @@ class AIService:
         prompt: str,
         proxy: str = None,
         max_retries: int = 3,
+        is_precise: bool = False,
+        current_price: float = 0,
+        future_dates: List[str] = None,
     ) -> Dict[str, Any]:
         """
-        调用 LLM 并返回结构化结果（包含信号）
-        返回: {"result": str, "signal": str, "summary": str}
+        调用 LLM 并返回结构化结果（包含信号和预测数据）
+        返回: {"result": str, "signal": str, "summary": str, "prediction": list}
         """
-        # 在 prompt 末尾添加结构化输出要求
-        structured_prompt = prompt + """
+        # 构建结构化输出要求
+        if is_precise and future_dates:
+            # 精准分析：要求返回未来5天预测
+            structured_prompt = prompt + f"""
+
+### 输出格式要求
+
+请在分析结束后，额外输出一个 JSON 块，格式如下：
+```json
+{{
+  "signal": "bullish/cautious/bearish",
+  "summary": "一句话总结（50字以内）",
+  "prediction": [
+    {{"date": "{future_dates[0]}", "price": 预测价格, "change_pct": 相对当前价涨跌幅}},
+    {{"date": "{future_dates[1]}", "price": 预测价格, "change_pct": 相对当前价涨跌幅}},
+    {{"date": "{future_dates[2]}", "price": 预测价格, "change_pct": 相对当前价涨跌幅}},
+    {{"date": "{future_dates[3]}", "price": 预测价格, "change_pct": 相对当前价涨跌幅}},
+    {{"date": "{future_dates[4]}", "price": 预测价格, "change_pct": 相对当前价涨跌幅}}
+  ]
+}}
+```
+
+当前价格: {current_price}
+
+signal 取值说明：
+- bullish: 看涨，建议买入或持有
+- cautious: 谨慎，建议观望
+- bearish: 看跌，建议卖出或减仓
+
+prediction 说明：
+- 请根据技术分析和基本面分析，预测未来5个交易日的价格走势
+- price: 预测的收盘价（保留2位小数）
+- change_pct: 相对于当前价格的涨跌幅百分比（保留2位小数，如 2.5 表示上涨2.5%）
+- 预测应基于趋势分析、支撑压力位、均线系统等技术指标
+"""
+        else:
+            # 快速分析：只要求信号和摘要
+            structured_prompt = prompt + """
 
 ### 输出格式要求
 
@@ -806,10 +882,17 @@ signal 取值说明：
                 
                 # 提取信号
                 signal_data = AIService.extract_signal_from_result(result)
+                
+                # 提取预测数据（仅精准分析）
+                prediction = []
+                if is_precise and current_price > 0:
+                    prediction = AIService.extract_prediction_from_result(result, current_price)
+                
                 return {
                     "result": result,
                     "signal": signal_data["signal"],
-                    "summary": signal_data["summary"]
+                    "summary": signal_data["summary"],
+                    "prediction": prediction
                 }
                 
             except requests.exceptions.HTTPError as e:
@@ -823,24 +906,24 @@ signal 取值说明：
                     logger.info(f"等待 {wait_time} 秒后重试...")
                     time.sleep(wait_time)
                     continue
-                return {"result": f"分析失败: {friendly_msg}", "signal": "cautious", "summary": ""}
+                return {"result": f"分析失败: {friendly_msg}", "signal": "cautious", "summary": "", "prediction": []}
 
             except requests.exceptions.ProxyError as e:
-                return {"result": f"分析失败: 代理连接失败（当前: {proxy}）", "signal": "cautious", "summary": ""}
+                return {"result": f"分析失败: 代理连接失败（当前: {proxy}）", "signal": "cautious", "summary": "", "prediction": []}
 
             except requests.exceptions.ConnectionError as e:
                 error_str = str(e)
                 if "ProxyError" in error_str or "proxy" in error_str.lower():
-                    return {"result": f"分析失败: 代理连接失败", "signal": "cautious", "summary": ""}
-                return {"result": f"分析失败: 网络连接失败", "signal": "cautious", "summary": ""}
+                    return {"result": f"分析失败: 代理连接失败", "signal": "cautious", "summary": "", "prediction": []}
+                return {"result": f"分析失败: 网络连接失败", "signal": "cautious", "summary": "", "prediction": []}
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
-                return {"result": "分析失败: 请求超时", "signal": "cautious", "summary": ""}
+                return {"result": "分析失败: 请求超时", "signal": "cautious", "summary": "", "prediction": []}
 
             except Exception as e:
-                return {"result": f"分析失败: {str(e)}", "signal": "cautious", "summary": ""}
+                return {"result": f"分析失败: {str(e)}", "signal": "cautious", "summary": "", "prediction": []}
 
-        return {"result": f"分析失败: 重试 {max_retries} 次后仍然失败", "signal": "cautious", "summary": ""}
+        return {"result": f"分析失败: 重试 {max_retries} 次后仍然失败", "signal": "cautious", "summary": "", "prediction": []}

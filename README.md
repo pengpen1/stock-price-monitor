@@ -1,142 +1,183 @@
-# 股票监控助手 (Stock Price Monitor)
+# 股票监控助手
 
-一个跨平台的桌面股票监控应用，支持实时行情、预警推送和桌面悬浮窗显示。
+> **免责声明**：本软件仅供学习交流使用，不构成任何投资建议。AI 分析结果和趋势预测仅供参考，不保证准确性。股市有风险，投资需谨慎，使用本软件产生的任何盈亏均由用户自行承担，与开发者无关。
+
+一个跨平台的桌面股票监控应用，支持实时行情、AI 智能分析、预警推送和桌面悬浮窗。
 
 ![screenshot](docs/screenshot.png)
 
-## ✨ 功能特性
+## 功能特性
 
-- 📈 **实时行情** - 自动获取 A 股实时价格、涨跌幅等数据
-- 🔔 **智能预警** - 支持止盈、止损、涨跌幅异动提醒
-- 📱 **消息推送** - 支持 PushPlus (微信) 和钉钉机器人推送
-- 🖥️ **桌面悬浮窗** - 始终置顶的迷你行情窗口，支持拖拽和吸边
-- 📌 **系统托盘** - 最小化到托盘，悬停显示股票信息
-- 🔄 **拖拽排序** - 自定义股票列表顺序
-- 💾 **本地存储** - 股票列表和设置自动保存
+### 行情监控
 
-## 🛠️ 技术栈
+- 实时获取 A 股行情数据（价格、涨跌幅、成交量等）
+- 大盘指数展示（上证、深证、创业板、沪深300）
+- 股票分组管理和拖拽排序
+- 桌面悬浮窗，始终置顶显示重点关注股票
 
-- **前端**: Electron + Vue 3 + TypeScript + TailwindCSS
-- **后端**: Python + FastAPI
-- **数据源**: 新浪财经 API
+### 股票详情
 
-## 📦 安装与运行
+- 分时走势图和 K 线图
+- 资金流向分析（主力、散户）
+- 技术指标（换手率、量比、振幅、均线）
+- 基本面数据（PE、PB、市值、行业）
+
+![detail](docs/detail.png)
+
+### AI 智能分析
+
+- 支持 Gemini / GPT / Claude 多模型
+- 快速分析：基于当日数据快速判断
+- 精准分析：综合技术面、基本面、资金流向、北向资金、融资融券等多维度数据
+- 趋势预测：AI 预测未来 5 个交易日价格走势
+- 结构化输出：自动提取看涨/谨慎/看跌信号
+
+![prediction](docs/prediction.png)
+
+### 复盘记录
+
+- 交易记录：记录买入/卖出/做T 操作及原因
+- K 线图标记：直观展示历史操作点位
+- AI 分析历史：查看历史分析记录和信号
+- 自动计算持仓成本和数量
+
+![history](docs/history.png)
+
+### 预警推送
+
+- 止盈/止损价格预警
+- 涨跌幅异动提醒
+- 支持 PushPlus（微信）和钉钉机器人推送
+
+### 其他
+
+- 系统托盘，最小化后台运行
+- 配置导入导出，轻松备份迁移
+- 代理配置，解决国内访问 AI 服务问题
+
+## 技术栈
+
+- 前端：Electron + Vue 3 + TypeScript + TailwindCSS + ECharts
+- 后端：Python + FastAPI
+- 数据源：新浪财经、东方财富
+
+## 安装与运行
 
 ### 环境要求
 
 - Node.js >= 18
 - Python >= 3.9
 
-### 1. 克隆项目
+### 快速开始
 
 ```bash
+# 克隆项目
 git clone https://github.com/your-username/stock-price-monitor.git
 cd stock-price-monitor
-```
 
-### 2. 安装后端依赖
-
-```bash
+# 安装后端依赖
 cd backend
 pip install -r requirements.txt
-```
 
-### 3. 安装前端依赖
-
-```bash
-cd frontend
+# 安装前端依赖
+cd ../frontend
 npm install
 ```
 
-### 4. 启动应用
+### 启动应用
 
-**启动后端服务：**
+启动后端服务：
+
 ```bash
 cd backend
 python main.py
 ```
 
-**启动前端应用：**
+启动前端应用：
+
 ```bash
 cd frontend
 npm run dev
 ```
 
-## 📖 使用说明
+### 打包发布
+
+```bash
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+
+# Linux
+npm run build:linux
+```
+
+## 使用说明
 
 ### 添加股票
 
-在输入框中输入股票代码（如 `600519`），点击添加按钮。支持的格式：
+输入股票代码，支持以下格式：
+
 - 纯数字：`600519`（自动识别沪深）
 - 带前缀：`sh600519`、`sz000001`
 
 ### 设置预警
 
-点击股票行的「预警」按钮，可设置：
-- **止盈价格**：当前价 >= 设定值时触发
-- **止损价格**：当前价 <= 设定值时触发
-- **涨跌幅预警**：涨跌幅绝对值 >= 设定值时触发
+点击股票行的预警按钮，可设置：
 
-### 消息推送配置
+- 止盈价格：当前价 >= 设定值时触发
+- 止损价格：当前价 <= 设定值时触发
+- 涨跌幅预警：涨跌幅绝对值 >= 设定值时触发
 
-点击右上角「设置」按钮：
-- **PushPlus Token**：在 [pushplus.plus](https://www.pushplus.plus/) 获取
-- **钉钉 Webhook**：创建钉钉群机器人获取
+### AI 分析配置
 
-### 悬浮窗
+在设置页面配置 AI 服务：
 
-- 启动时自动显示在屏幕右下角
-- 拖拽标题栏可移动位置
-- 靠近屏幕边缘自动吸附
-- 点击 × 关闭，可从托盘菜单重新打开
+- 选择模型提供商（Gemini / GPT / Claude）
+- 填入 API Key
+- 可选配置代理地址
 
-## 📁 项目结构
+### 消息推送
 
-```
+- PushPlus Token：在 [pushplus.plus](https://www.pushplus.plus/) 获取
+- 钉钉 Webhook：创建钉钉群机器人获取
+
+## 项目结构
+
+```text
 stock-price-monitor/
 ├── backend/                # Python 后端
 │   ├── main.py            # FastAPI 入口
-│   ├── monitor.py         # 股票监控核心逻辑
-│   ├── requirements.txt   # Python 依赖
+│   ├── monitor.py         # 股票监控核心
+│   ├── ai_service.py      # AI 分析服务
+│   ├── records.py         # 交易记录管理
 │   └── data/              # 本地数据存储
 ├── frontend/              # Electron + Vue 前端
 │   ├── electron/          # Electron 主进程
-│   ├── src/               # Vue 源码
-│   │   ├── components/    # 组件
-│   │   └── api.ts         # API 封装
-│   └── package.json
+│   └── src/               # Vue 源码
+├── scripts/               # 构建脚本
 └── README.md
 ```
 
-## 🔧 配置说明
+## 数据存储
 
-### 后端配置
+应用数据存储在以下位置：
 
-数据存储在 `backend/data/` 目录：
-- `stocks.json` - 股票列表
+- Windows: `%APPDATA%/stock-monitor/data/`
+- macOS/Linux: `~/.stock-monitor/data/`
+
+包含文件：
+
+- `stocks.json` - 股票列表和分组
 - `settings.json` - 应用设置
 - `alerts.json` - 预警配置
+- `records.json` - 交易记录和 AI 分析历史
 
-### 前端配置
-
-- 后端 API 地址：`frontend/src/api.ts` 中的 `baseURL`
-
-## 📝 开发计划
-
-- [x] 实时行情获取
-- [x] 桌面悬浮窗
-- [x] 系统托盘
-- [x] 预警功能
-- [x] 消息推送
-- [x] 拖拽排序
-- [x] 打包发布 (electron-builder)
-- [x] K 线图表
-- [x] AI 分析
-
-## 📄 License
+## License
 
 MIT License
 
-## 🤝 贡献
+## 贡献
 
 欢迎提交 Issue 和 Pull Request！
