@@ -4,6 +4,10 @@
   "version": "1.0.3",
   "description": "股票监控助手 - 实时行情监控与AI分析",
   "author": "Stock Monitor Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pengpen1/stock-price-monitor.git"
+  },
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
