@@ -14,6 +14,26 @@
         </div>
         <div class="text-right">
           <div class="flex items-center gap-2 mb-1 justify-end">
+            <!-- 复盘记录下拉菜单 -->
+            <div class="relative" ref="recordMenuRef">
+              <button @click="showRecordMenu = !showRecordMenu"
+                class="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-md hover:bg-slate-200 hover:border-slate-300 transition-all flex items-center gap-1 whitespace-nowrap">
+                复盘记录
+                <span class="text-[10px]">▼</span>
+              </button>
+              <div v-if="showRecordMenu" class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20 min-w-[130px]">
+                <button @click="openTradeRecords" class="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                  交易记录
+                </button>
+                <button @click="openAIRecords" class="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                  AI分析历史
+                </button>
+                <hr class="my-1 border-slate-100">
+                <button @click="openAddTradeRecord" class="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 whitespace-nowrap">
+                  + 添加交易
+                </button>
+              </div>
+            </div>
             <button @click="openAIModal('fast')"
               class="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 rounded-md hover:bg-slate-200 hover:border-slate-300 transition-all">
               快速分析
@@ -106,6 +126,15 @@
 
     <!-- AI 分析弹窗 -->
     <AIAnalysisModal v-model:visible="showAiModal" :stock-code="code" :type="aiType" />
+    
+    <!-- 交易记录列表弹窗 -->
+    <TradeRecordList v-model:visible="showTradeRecordList" :stock-code="code" />
+    
+    <!-- 添加交易记录弹窗 -->
+    <TradeRecordModal v-model:visible="showAddTradeRecord" :stock-code="code" @saved="onTradeRecordSaved" />
+    
+    <!-- AI 分析历史弹窗 -->
+    <AIRecordList v-model:visible="showAIRecordList" :stock-code="code" />
   </div>
 </template>
 
@@ -117,8 +146,11 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, CandlestickChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { getStockDetail, getKlineData } from '../api'
+import { getStockDetail, getKlineData, getStockTradeRecords, type TradeRecord } from '../api'
 import AIAnalysisModal from './AIAnalysisModal.vue'
+import TradeRecordList from './TradeRecordList.vue'
+import TradeRecordModal from './TradeRecordModal.vue'
+import AIRecordList from './AIRecordList.vue'
 
 use([CanvasRenderer, LineChart, CandlestickChart, BarChart, GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent])
 
@@ -137,9 +169,56 @@ const activeTab = ref('minute')
 const showAiModal = ref(false)
 const aiType = ref<'fast' | 'precise'>('fast')
 
+// 复盘记录相关
+const showRecordMenu = ref(false)
+const recordMenuRef = ref<HTMLElement | null>(null)
+const showTradeRecordList = ref(false)
+const showAddTradeRecord = ref(false)
+const showAIRecordList = ref(false)
+const tradeRecords = ref<TradeRecord[]>([])
+
 const openAIModal = (type: 'fast' | 'precise') => {
   aiType.value = type
   showAiModal.value = true
+}
+
+// 复盘记录菜单操作
+const openTradeRecords = () => {
+  showRecordMenu.value = false
+  showTradeRecordList.value = true
+}
+
+const openAIRecords = () => {
+  showRecordMenu.value = false
+  showAIRecordList.value = true
+}
+
+const openAddTradeRecord = () => {
+  showRecordMenu.value = false
+  showAddTradeRecord.value = true
+}
+
+const onTradeRecordSaved = () => {
+  loadTradeRecords()
+}
+
+// 加载交易记录（用于图表标记）
+const loadTradeRecords = async () => {
+  try {
+    const res = await getStockTradeRecords(props.code)
+    if (res.status === 'success') {
+      tradeRecords.value = res.records || []
+    }
+  } catch (e) {
+    console.error('加载交易记录失败:', e)
+  }
+}
+
+// 点击外部关闭菜单
+const handleClickOutside = (e: MouseEvent) => {
+  if (recordMenuRef.value && !recordMenuRef.value.contains(e.target as Node)) {
+    showRecordMenu.value = false
+  }
 }
 
 // 轮询定时器
@@ -629,9 +708,80 @@ const getKlineChartOption = () => {
         data: volumes,
         xAxisIndex: 1,
         yAxisIndex: 1
+      },
+      // 交易记录标记点
+      {
+        name: '交易记录',
+        type: 'scatter',
+        data: getTradeMarkPoints(klineData.value, dates),
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        symbolSize: 20,
+        itemStyle: { opacity: 0.9 },
+        label: {
+          show: true,
+          formatter: (params: any) => params.data.label,
+          fontSize: 10,
+          fontWeight: 'bold',
+          color: '#fff'
+        },
+        tooltip: {
+          formatter: (params: any) => {
+            const d = params.data
+            return `<div style="font-size:12px">
+              <div style="font-weight:bold;margin-bottom:4px">${d.typeLabel}</div>
+              <div>价格: ¥${d.price}</div>
+              <div>手数: ${d.quantity}手</div>
+              <div>时间: ${d.tradeTime}</div>
+              <div style="margin-top:4px;color:#666">${d.reason}</div>
+            </div>`
+          }
+        }
       }
     ]
   }
+}
+
+// 生成交易记录标记点数据
+const getTradeMarkPoints = (klineList: any[], dateLabels: string[]) => {
+  if (!tradeRecords.value.length || !klineList.length) return []
+  
+  const points: any[] = []
+  const typeConfig: Record<string, { label: string; color: string; typeLabel: string }> = {
+    'B': { label: 'B', color: '#ef4444', typeLabel: '买入' },
+    'S': { label: 'S', color: '#22c55e', typeLabel: '卖出' },
+    'T': { label: 'T', color: '#3b82f6', typeLabel: '做T' }
+  }
+  
+  for (const record of tradeRecords.value) {
+    // 从交易时间中提取日期
+    const tradeDate = record.trade_time.split(' ')[0]
+    
+    // 在 K 线数据中查找对应日期
+    const klineIndex = klineList.findIndex(k => k.date === tradeDate)
+    if (klineIndex === -1) continue
+    
+    const config = typeConfig[record.type] || typeConfig['B']
+    const kline = klineList[klineIndex]
+    
+    // 标记点位置：买入在低点下方，卖出在高点上方
+    const yValue = record.type === 'B' ? kline.low * 0.995 : kline.high * 1.005
+    
+    points.push({
+      value: [dateLabels[klineIndex], yValue],
+      label: config.label,
+      typeLabel: config.typeLabel,
+      price: record.price,
+      quantity: record.quantity,
+      reason: record.reason,
+      tradeTime: record.trade_time,
+      itemStyle: { color: config.color },
+      symbol: record.type === 'B' ? 'triangle' : (record.type === 'S' ? 'triangle' : 'diamond'),
+      symbolRotate: record.type === 'S' ? 180 : 0
+    })
+  }
+  
+  return points
 }
 
 // 处理图表缩放事件，保存用户的缩放状态
@@ -714,11 +864,14 @@ watch(activeTab, (newTab) => {
 
 onMounted(() => {
   loadData()
+  loadTradeRecords()
   startRefresh()
+  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   stopRefresh()
+  document.removeEventListener('click', handleClickOutside)
 })
 
 watch(() => props.code, () => {

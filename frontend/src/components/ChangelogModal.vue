@@ -66,11 +66,23 @@ defineProps<{
 
 const emit = defineEmits(['update:visible'])
 
-const currentVersion = '1.0.2'
-const releaseDate = '2025-12-12'
+const currentVersion = '1.0.3'
+const releaseDate = '2025-12-15'
 
 // 更新日志数据
 const changelog = ref([
+  {
+    version: '1.0.3',
+    date: '2025-12-15',
+    changes: [
+      { type: 'feature', text: '交易记录功能，支持记录买入/卖出/做T操作及原因' },
+      { type: 'feature', text: 'K 线图交易标记，直观展示历史操作点位' },
+      { type: 'feature', text: 'AI 分析自动记录，支持查看历史分析和信号' },
+      { type: 'feature', text: 'AI 结构化输出，自动提取看涨/谨慎/看跌信号' },
+      { type: 'improve', text: '精准分析增加历史记录参考，分析更精准' },
+      { type: 'improve', text: '操作列下拉菜单，界面更简洁' },
+    ]
+  },
   {
     version: '1.0.2',
     date: '2025-12-12',

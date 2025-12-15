@@ -199,9 +199,12 @@ class AIService:
         kline_data: List[Dict],
         extra_info: Optional[Dict] = None,
         market_data: Optional[Dict] = None,
+        trade_history: Optional[List[Dict]] = None,
+        ai_history: Optional[List[Dict]] = None,
     ) -> str:
         """
         将股票数据格式化为 LLM 提示词，重点突出成交量信息
+        包含用户交易记录和历史 AI 分析记录（用于精准分析）
         """
         prompt_parts = []
 
@@ -351,6 +354,32 @@ class AIService:
                         prompt_parts.append(
                             f"- {idx.get('name', code)}: {idx.get('price')} ({idx.get('change_percent')}%)"
                         )
+
+        # 6. 用户交易记录（精准分析时提供）
+        if trade_history:
+            prompt_parts.append(f"\n### 用户交易记录\n")
+            prompt_parts.append("以下是用户在该股票上的历史操作记录：")
+            prompt_parts.append("| 时间 | 类型 | 价格 | 手数 | 操作原因 |")
+            prompt_parts.append("|---|---|---|---|---|")
+            for t in trade_history:
+                type_map = {"B": "买入", "S": "卖出", "T": "做T"}
+                type_str = type_map.get(t["type"], t["type"])
+                prompt_parts.append(
+                    f"| {t['trade_time']} | {type_str} | {t['price']} | {t['quantity']} | {t['reason']} |"
+                )
+            prompt_parts.append("\n请结合用户的持仓成本和操作历史给出建议。")
+
+        # 7. 历史 AI 分析记录（精准分析时提供，用于模型自我复盘）
+        if ai_history:
+            prompt_parts.append(f"\n### 历史 AI 分析记录\n")
+            prompt_parts.append("以下是之前对该股票的分析记录，请参考并复盘：")
+            prompt_parts.append("| 时间 | 信号 | 摘要 |")
+            prompt_parts.append("|---|---|---|")
+            signal_map = {"bullish": "看涨📈", "cautious": "谨慎⚠️", "bearish": "看跌📉"}
+            for a in ai_history:
+                signal_str = signal_map.get(a["signal"], a["signal"])
+                prompt_parts.append(f"| {a['datetime']} | {signal_str} | {a['summary']} |")
+            prompt_parts.append("\n请对比之前的分析，说明走势是否符合预期，并给出新的判断。")
 
         prompt_parts.append(f"\n### 分析要求\n")
         prompt_parts.append("请重点分析：")
@@ -527,3 +556,149 @@ class AIService:
             "POST", url, proxy=proxy, headers=headers, json=data, timeout=90
         )
         return res_json["content"][0]["text"]
+
+    @staticmethod
+    def extract_signal_from_result(result: str) -> Dict[str, str]:
+        """
+        从分析结果中提取信号和摘要
+        尝试解析结果中的 JSON 块，如果没有则使用关键词匹配
+        """
+        import re
+        
+        # 尝试从结果中提取 JSON 块
+        json_pattern = r'```json\s*(\{[^`]+\})\s*```'
+        match = re.search(json_pattern, result, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                return {
+                    "signal": data.get("signal", "cautious"),
+                    "summary": data.get("summary", "")[:100]
+                }
+            except:
+                pass
+        
+        # 尝试直接解析 JSON（可能没有代码块包裹）
+        json_inline = r'\{\s*"signal"\s*:\s*"(\w+)"\s*,\s*"summary"\s*:\s*"([^"]+)"\s*\}'
+        match = re.search(json_inline, result)
+        if match:
+            return {
+                "signal": match.group(1),
+                "summary": match.group(2)[:100]
+            }
+        
+        # 关键词匹配作为后备方案
+        result_lower = result.lower()
+        signal = "cautious"  # 默认谨慎
+        
+        # 看涨关键词
+        bullish_keywords = ["看涨", "买入", "强势", "突破", "上涨", "bullish", "buy", "建议买入", "逢低买入"]
+        # 看跌关键词
+        bearish_keywords = ["看跌", "卖出", "弱势", "下跌", "bearish", "sell", "建议卖出", "减仓"]
+        
+        bullish_count = sum(1 for kw in bullish_keywords if kw in result_lower)
+        bearish_count = sum(1 for kw in bearish_keywords if kw in result_lower)
+        
+        if bullish_count > bearish_count + 1:
+            signal = "bullish"
+        elif bearish_count > bullish_count + 1:
+            signal = "bearish"
+        
+        # 提取摘要（取第一段有意义的文字）
+        lines = [l.strip() for l in result.split('\n') if l.strip() and not l.startswith('#')]
+        summary = lines[0][:100] if lines else "分析完成"
+        
+        return {"signal": signal, "summary": summary}
+
+    @staticmethod
+    def call_llm_with_signal(
+        provider: str,
+        api_key: str,
+        model: str,
+        prompt: str,
+        proxy: str = None,
+        max_retries: int = 3,
+    ) -> Dict[str, Any]:
+        """
+        调用 LLM 并返回结构化结果（包含信号）
+        返回: {"result": str, "signal": str, "summary": str}
+        """
+        # 在 prompt 末尾添加结构化输出要求
+        structured_prompt = prompt + """
+
+### 输出格式要求
+
+请在分析结束后，额外输出一个 JSON 块，格式如下：
+```json
+{
+  "signal": "bullish/cautious/bearish",
+  "summary": "一句话总结（50字以内）"
+}
+```
+
+signal 取值说明：
+- bullish: 看涨，建议买入或持有
+- cautious: 谨慎，建议观望
+- bearish: 看跌，建议卖出或减仓
+"""
+        
+        system_prompt = "你是一个专业的股票分析师，擅长技术面分析和基本面分析。请根据提供的股票数据，给出专业的趋势预测和操作建议。重点关注成交量变化与价格走势的配合关系。输出格式使用Markdown。"
+
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if provider.lower() == "openai" or provider.lower() == "gpt":
+                    result = AIService._call_openai(
+                        api_key, model, system_prompt, structured_prompt, proxy
+                    )
+                elif provider.lower() == "gemini":
+                    result = AIService._call_gemini(
+                        api_key, model, system_prompt, structured_prompt, proxy
+                    )
+                elif provider.lower() == "claude":
+                    result = AIService._call_claude(
+                        api_key, model, system_prompt, structured_prompt, proxy
+                    )
+                else:
+                    return {"result": f"不支持的模型提供商: {provider}", "signal": "cautious", "summary": ""}
+                
+                # 提取信号
+                signal_data = AIService.extract_signal_from_result(result)
+                return {
+                    "result": result,
+                    "signal": signal_data["signal"],
+                    "summary": signal_data["summary"]
+                }
+                
+            except requests.exceptions.HTTPError as e:
+                last_error = e
+                status_code = getattr(getattr(e, "response", None), "status_code", 0)
+                friendly_msg = ERROR_MESSAGES.get(status_code, f"HTTP 错误 {status_code}")
+                logger.error(f"LLM调用失败 (尝试 {attempt + 1}/{max_retries}): {friendly_msg}")
+
+                if status_code == 429 and attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5
+                    logger.info(f"等待 {wait_time} 秒后重试...")
+                    time.sleep(wait_time)
+                    continue
+                return {"result": f"分析失败: {friendly_msg}", "signal": "cautious", "summary": ""}
+
+            except requests.exceptions.ProxyError as e:
+                return {"result": f"分析失败: 代理连接失败（当前: {proxy}）", "signal": "cautious", "summary": ""}
+
+            except requests.exceptions.ConnectionError as e:
+                error_str = str(e)
+                if "ProxyError" in error_str or "proxy" in error_str.lower():
+                    return {"result": f"分析失败: 代理连接失败", "signal": "cautious", "summary": ""}
+                return {"result": f"分析失败: 网络连接失败", "signal": "cautious", "summary": ""}
+
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                return {"result": "分析失败: 请求超时", "signal": "cautious", "summary": ""}
+
+            except Exception as e:
+                return {"result": f"分析失败: {str(e)}", "signal": "cautious", "summary": ""}
+
+        return {"result": f"分析失败: 重试 {max_retries} 次后仍然失败", "signal": "cautious", "summary": ""}

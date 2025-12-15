@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from monitor import StockMonitor
+from monitor import StockMonitor, get_data_dir
 import uvicorn
 import threading
 from ai_service import AIService
+from records import RecordsManager
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from contextlib import asynccontextmanager
 
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 monitor = StockMonitor()
+records_manager = RecordsManager(get_data_dir())
 
 @app.get("/")
 def read_root():
@@ -161,7 +163,11 @@ def analyze_stock(req: AnalyzeRequest):
     
     if not basic:
         return {"status": "error", "message": "无法获取股票基本信息"}
-        
+    
+    # 获取历史记录用于精准分析
+    trade_history = []
+    ai_history = []
+    
     # 根据分析类型获取不同范围的数据
     if req.type == "fast":
         minute = monitor.get_minute_data(req.code).get("data", [])
@@ -175,7 +181,7 @@ def analyze_stock(req: AnalyzeRequest):
     else:
         minute = monitor.get_minute_data(req.code).get("data", []) 
         kline = monitor.get_kline_data(req.code, "day", 240).get("data", [])
-        # 精准分析：最近3天大盘数据
+        # 精准分析：最近3天大盘数据 + 历史记录
         stats_history = monitor.get_market_stats_history(3).get("data", [])
         market_data = {
             "index": monitor.index_data,
@@ -183,15 +189,39 @@ def analyze_stock(req: AnalyzeRequest):
             "stats_history": stats_history,
             "days": 3
         }
+        # 获取交易记录和 AI 分析历史
+        trade_history = records_manager.get_trade_records_for_analysis(req.code, 10)
+        ai_history = records_manager.get_ai_records_for_analysis(req.code, 5)
         
-    # 格式化提示词（包含大盘数据）
-    prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs, market_data)
+    # 格式化提示词（包含大盘数据和历史记录）
+    prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs, market_data, trade_history, ai_history)
     
-    # 调用 LLM（支持代理）
-    result = AIService.call_llm(req.provider, req.api_key, req.model, prompt, req.proxy)
+    # 调用 LLM 并获取结构化结果
+    llm_result = AIService.call_llm_with_signal(req.provider, req.api_key, req.model, prompt, req.proxy)
     
-    # 返回结果和 prompt（用于前端展示）
-    return {"status": "success", "result": result, "prompt": prompt}
+    result = llm_result["result"]
+    signal = llm_result["signal"]
+    summary = llm_result["summary"]
+    
+    # 自动保存 AI 分析记录（仅在分析成功时）
+    if not result.startswith("分析失败"):
+        records_manager.add_ai_record(
+            stock_code=req.code,
+            signal=signal,
+            summary=summary,
+            full_result=result,
+            analysis_type=req.type,
+            model=req.model or req.provider
+        )
+    
+    # 返回结果
+    return {
+        "status": "success", 
+        "result": result, 
+        "prompt": prompt,
+        "signal": signal,
+        "summary": summary
+    }
 
 # 导出配置数据
 @app.get("/data/export")
@@ -216,6 +246,68 @@ def get_data_path():
 def set_data_path(data: dict):
     """设置自定义数据存储路径"""
     return monitor.set_data_path(data.get("path", ""))
+
+# ========== 交易记录 API ==========
+
+class TradeRecordRequest(BaseModel):
+    stock_code: str
+    type: str  # B/S/T
+    price: float
+    quantity: int
+    reason: str
+    trade_time: Optional[str] = None
+
+class TradeRecordUpdateRequest(BaseModel):
+    type: Optional[str] = None
+    price: Optional[float] = None
+    quantity: Optional[int] = None
+    reason: Optional[str] = None
+    trade_time: Optional[str] = None
+
+@app.post("/records/trade")
+def add_trade_record(req: TradeRecordRequest):
+    """添加交易记录"""
+    return records_manager.add_trade_record(
+        stock_code=req.stock_code,
+        trade_type=req.type,
+        price=req.price,
+        quantity=req.quantity,
+        reason=req.reason,
+        trade_time=req.trade_time
+    )
+
+@app.put("/records/trade/{record_id}")
+def update_trade_record(record_id: str, req: TradeRecordUpdateRequest):
+    """更新交易记录"""
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    return records_manager.update_trade_record(record_id, updates)
+
+@app.delete("/records/trade/{record_id}")
+def delete_trade_record(record_id: str):
+    """删除交易记录"""
+    return records_manager.delete_trade_record(record_id)
+
+@app.get("/records/trade")
+def get_trade_records(stock_code: Optional[str] = None, limit: int = 100):
+    """获取交易记录"""
+    return records_manager.get_trade_records(stock_code, limit)
+
+@app.get("/records/trade/{stock_code}")
+def get_stock_trade_records(stock_code: str, limit: int = 100):
+    """获取指定股票的交易记录"""
+    return records_manager.get_trade_records(stock_code, limit)
+
+# ========== AI 分析记录 API ==========
+
+@app.get("/records/ai")
+def get_ai_records(stock_code: Optional[str] = None, limit: int = 50):
+    """获取 AI 分析记录"""
+    return records_manager.get_ai_records(stock_code, limit)
+
+@app.get("/records/ai/{stock_code}")
+def get_stock_ai_records(stock_code: str, limit: int = 50):
+    """获取指定股票的 AI 分析记录"""
+    return records_manager.get_ai_records(stock_code, limit)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

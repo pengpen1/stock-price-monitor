@@ -208,7 +208,7 @@
 
       <!-- 股票列表 -->
       <div
-        class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
+        class="bg-white rounded-xl shadow-sm border border-slate-100"
       >
         <table class="w-full table-fixed">
           <thead>
@@ -355,12 +355,32 @@
                   >
                     预警
                   </button>
-                  <button
-                    @click="handleRemoveStock(stock.code)"
-                    class="px-1.5 py-0.5 text-xs text-slate-500 border border-slate-200 rounded hover:bg-red-50 hover:text-red-500"
-                  >
-                    删除
-                  </button>
+                  <!-- 更多操作下拉菜单 -->
+                  <div class="relative">
+                    <button
+                      @click.stop="toggleMoreMenu(stock.code)"
+                      class="px-1.5 py-0.5 text-xs text-slate-500 border border-slate-200 rounded hover:bg-slate-50"
+                    >
+                      ···
+                    </button>
+                    <div 
+                      v-if="moreMenuCode === stock.code"
+                      class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-30 min-w-[90px]"
+                    >
+                      <button
+                        @click="openQuickTradeRecord(stock)"
+                        class="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        添加交易
+                      </button>
+                      <button
+                        @click="handleRemoveStock(stock.code)"
+                        class="w-full px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-50"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -592,6 +612,12 @@
       v-model:visible="showIndexDetail"
       :index-code="currentIndexCode"
     />
+
+    <!-- 快速添加交易记录弹窗 -->
+    <TradeRecordModal
+      v-model:visible="showQuickTradeModal"
+      :stock-code="quickTradeStockCode"
+    />
   </div>
 </template>
 
@@ -615,6 +641,7 @@ import {
 import AIAnalysisModal from "./AIAnalysisModal.vue";
 import ChangelogModal from "./ChangelogModal.vue";
 import UserGuideModal from "./UserGuideModal.vue";
+import TradeRecordModal from "./TradeRecordModal.vue";
 import IndexDetailModal from "./IndexDetailModal.vue";
 
 const { locale } = useI18n();
@@ -675,6 +702,30 @@ const showUserGuide = ref(false);
 // 大盘详情弹窗
 const showIndexDetail = ref(false);
 const currentIndexCode = ref("");
+
+// 更多操作菜单
+const moreMenuCode = ref<string | null>(null);
+
+// 快速添加交易记录
+const showQuickTradeModal = ref(false);
+const quickTradeStockCode = ref("");
+
+const toggleMoreMenu = (code: string) => {
+  moreMenuCode.value = moreMenuCode.value === code ? null : code;
+};
+
+const openQuickTradeRecord = (stock: any) => {
+  moreMenuCode.value = null;
+  quickTradeStockCode.value = stock.code;
+  showQuickTradeModal.value = true;
+};
+
+// 点击外部关闭更多菜单
+const handleClickOutsideMoreMenu = (e: MouseEvent) => {
+  if (moreMenuCode.value) {
+    moreMenuCode.value = null;
+  }
+};
 
 const openAIModal = (stock: any, type: "fast" | "precise") => {
   aiStockCode.value = stock.code;
@@ -1104,9 +1155,10 @@ const loadSettingsAndStart = async () => {
   alertCheckId = setInterval(checkAlerts, 3000);
 };
 
-// 点击其他地方关闭右键菜单
+// 点击其他地方关闭右键菜单和更多操作菜单
 const handleGlobalClick = () => {
   hideContextMenu();
+  moreMenuCode.value = null;
 };
 
 onMounted(() => {
