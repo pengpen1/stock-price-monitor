@@ -189,4 +189,89 @@ export const exportData = async () => {
   return response.data;
 };
 
+// ========== 交易记录 API ==========
+
+// 交易记录类型
+export interface TradeRecord {
+  id: string;
+  stock_code: string;
+  type: 'B' | 'S' | 'T';  // 买入/卖出/做T
+  price: number;
+  quantity: number;
+  reason: string;
+  trade_time: string;
+  created_at: string;
+}
+
+// AI 分析记录类型
+export interface AIRecord {
+  id: string;
+  stock_code: string;
+  signal: 'bullish' | 'cautious' | 'bearish';
+  summary: string;
+  full_result: string;
+  analysis_type: 'fast' | 'precise';
+  model: string;
+  datetime: string;
+}
+
+// 添加交易记录
+export const addTradeRecord = async (data: {
+  stock_code: string;
+  type: 'B' | 'S' | 'T';
+  price: number;
+  quantity: number;
+  reason: string;
+  trade_time?: string;
+}) => {
+  const response = await api.post('/records/trade', data);
+  return response.data;
+};
+
+// 更新交易记录
+export const updateTradeRecord = async (recordId: string, data: {
+  type?: 'B' | 'S' | 'T';
+  price?: number;
+  quantity?: number;
+  reason?: string;
+  trade_time?: string;
+}) => {
+  const response = await api.put(`/records/trade/${recordId}`, data);
+  return response.data;
+};
+
+// 删除交易记录
+export const deleteTradeRecord = async (recordId: string) => {
+  const response = await api.delete(`/records/trade/${recordId}`);
+  return response.data;
+};
+
+// 获取交易记录
+export const getTradeRecords = async (stockCode?: string, limit: number = 100) => {
+  const params: Record<string, any> = { limit };
+  if (stockCode) params.stock_code = stockCode;
+  const response = await api.get('/records/trade', { params });
+  return response.data;
+};
+
+// 获取指定股票的交易记录
+export const getStockTradeRecords = async (stockCode: string, limit: number = 100) => {
+  const response = await api.get(`/records/trade/${stockCode}`, { params: { limit } });
+  return response.data;
+};
+
+// 获取 AI 分析记录
+export const getAIRecords = async (stockCode?: string, limit: number = 50) => {
+  const params: Record<string, any> = { limit };
+  if (stockCode) params.stock_code = stockCode;
+  const response = await api.get('/records/ai', { params });
+  return response.data;
+};
+
+// 获取指定股票的 AI 分析记录
+export const getStockAIRecords = async (stockCode: string, limit: number = 50) => {
+  const response = await api.get(`/records/ai/${stockCode}`, { params: { limit } });
+  return response.data;
+};
+
 export default api;

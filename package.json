@@ -1,6 +1,6 @@
 {
   "name": "stock-price-monitor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "股票监控助手 - 实时行情监控与AI分析",
   "scripts": {
