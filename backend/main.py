@@ -214,12 +214,38 @@ def analyze_stock(req: AnalyzeRequest):
         extra_data, dragon_tiger
     )
     
+    # 精准分析时计算未来5个交易日日期
+    future_dates = []
+    current_price = 0
+    is_precise = req.type == "precise"
+    
+    if is_precise:
+        from datetime import datetime, timedelta
+        current_price = float(basic.get("price", 0))
+        # 计算未来5个交易日（简单处理，跳过周末）
+        today = datetime.now()
+        count = 0
+        day = today
+        while count < 5:
+            day = day + timedelta(days=1)
+            # 跳过周末
+            if day.weekday() < 5:  # 0-4 是周一到周五
+                future_dates.append(day.strftime("%Y-%m-%d"))
+                count += 1
+    
     # 调用 LLM 并获取结构化结果
-    llm_result = AIService.call_llm_with_signal(req.provider, req.api_key, req.model, prompt, req.proxy)
+    llm_result = AIService.call_llm_with_signal(
+        req.provider, req.api_key, req.model, prompt, req.proxy,
+        max_retries=3,
+        is_precise=is_precise,
+        current_price=current_price,
+        future_dates=future_dates
+    )
     
     result = llm_result["result"]
     signal = llm_result["signal"]
     summary = llm_result["summary"]
+    prediction = llm_result.get("prediction", [])
     
     # 自动保存 AI 分析记录（仅在分析成功时）
     if not result.startswith("分析失败"):
@@ -238,7 +264,9 @@ def analyze_stock(req: AnalyzeRequest):
         "result": result, 
         "prompt": prompt,
         "signal": signal,
-        "summary": summary
+        "summary": summary,
+        "prediction": prediction,
+        "current_price": current_price
     }
 
 # 导出配置数据

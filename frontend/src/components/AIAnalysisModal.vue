@@ -115,6 +115,15 @@
                         </div>
                     </div>
 
+                    <!-- 预测趋势图（仅精准分析） -->
+                    <div v-if="type === 'precise' && prediction.length > 0" class="bg-gray-800/50 rounded-lg border border-gray-700/50 p-4 mb-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-medium text-gray-300">未来5日趋势预测</h4>
+                            <span class="text-xs text-gray-500">基于AI分析，仅供参考</span>
+                        </div>
+                        <div ref="predictionChartRef" class="w-full h-64"></div>
+                    </div>
+
                     <!-- 分析结果 -->
                     <div class="rendered-markdown bg-gray-800/30 p-8 rounded-xl border border-gray-700/50"
                         v-html="renderedResult"></div>
@@ -131,9 +140,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import { marked } from 'marked';
+import * as echarts from 'echarts';
 import { analyzeStock, getSettings, getStockPosition } from '../api';
+
+// 预测数据类型
+interface PredictionItem {
+    date: string;
+    price: number;
+    change_pct: number;
+}
 
 const props = defineProps<{
     visible: boolean;
@@ -155,6 +172,10 @@ const result = ref('');
 const promptText = ref(''); // 保存发送给大模型的 prompt
 const showPrompt = ref(false); // 是否展开 prompt
 const config = ref<{ provider: string, apiKey: string, model: string, proxy?: string } | null>(null);
+const prediction = ref<PredictionItem[]>([]); // 预测数据
+const currentPrice = ref(0); // 当前价格
+const predictionChartRef = ref<HTMLElement | null>(null); // 图表容器
+let predictionChart: echarts.ECharts | null = null; // 图表实例
 
 const hasConfig = computed(() => !!config.value?.apiKey);
 
@@ -228,6 +249,8 @@ const close = () => {
 
 const startAnalysis = async () => {
     step.value = 'loading';
+    prediction.value = [];
+    
     try {
         if (!config.value) return;
 
@@ -251,19 +274,149 @@ const startAnalysis = async () => {
 
         if (res.status === 'success') {
             result.value = res.result;
-            promptText.value = res.prompt || ''; // 保存 prompt
+            promptText.value = res.prompt || '';
+            prediction.value = res.prediction || [];
+            currentPrice.value = res.current_price || 0;
             step.value = 'result';
+            
+            // 渲染预测图表
+            if (props.type === 'precise' && prediction.value.length > 0) {
+                await nextTick();
+                renderPredictionChart();
+            }
         } else {
             result.value = `**分析失败**: ${res.message}`;
             promptText.value = '';
+            prediction.value = [];
             step.value = 'result';
         }
     } catch (e: any) {
         result.value = `**发生错误**: ${e.message || '未知错误'}`;
         promptText.value = '';
+        prediction.value = [];
         step.value = 'result';
     }
 };
+
+// 渲染预测趋势图
+const renderPredictionChart = () => {
+    if (!predictionChartRef.value || prediction.value.length === 0) return;
+    
+    // 销毁旧图表
+    if (predictionChart) {
+        predictionChart.dispose();
+    }
+    
+    predictionChart = echarts.init(predictionChartRef.value);
+    
+    // 构建数据：当前价格 + 预测价格
+    const dates = ['今日', ...prediction.value.map(p => p.date.slice(5))]; // MM-DD 格式
+    const prices = [currentPrice.value, ...prediction.value.map(p => p.price)];
+    const changes = [0, ...prediction.value.map(p => p.change_pct)];
+    
+    // 计算价格范围
+    const minPrice = Math.min(...prices) * 0.98;
+    const maxPrice = Math.max(...prices) * 1.02;
+    
+    // 判断整体趋势
+    const lastPrice = prices[prices.length - 1];
+    const isUp = lastPrice > currentPrice.value;
+    const lineColor = isUp ? '#22c55e' : '#ef4444';
+    const areaColorStart = isUp ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+    const areaColorEnd = isUp ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)';
+    
+    const option: echarts.EChartsOption = {
+        backgroundColor: 'transparent',
+        grid: {
+            left: 60,
+            right: 20,
+            top: 30,
+            bottom: 40
+        },
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+            borderColor: '#475569',
+            textStyle: { color: '#e2e8f0' },
+            formatter: (params: any) => {
+                const idx = params[0].dataIndex;
+                const price = prices[idx];
+                const change = changes[idx];
+                const changeStr = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
+                const changeColor = change >= 0 ? '#22c55e' : '#ef4444';
+                
+                if (idx === 0) {
+                    return `<div style="font-size:12px">
+                        <div style="margin-bottom:4px;color:#94a3b8">当前价格</div>
+                        <div style="font-size:16px;font-weight:bold">¥${price.toFixed(2)}</div>
+                    </div>`;
+                }
+                
+                return `<div style="font-size:12px">
+                    <div style="margin-bottom:4px;color:#94a3b8">${prediction.value[idx-1].date}</div>
+                    <div style="font-size:16px;font-weight:bold">¥${price.toFixed(2)}</div>
+                    <div style="color:${changeColor};margin-top:4px">预估涨跌: ${changeStr}</div>
+                </div>`;
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: dates,
+            axisLine: { lineStyle: { color: '#475569' } },
+            axisLabel: { color: '#94a3b8', fontSize: 11 },
+            axisTick: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            min: minPrice,
+            max: maxPrice,
+            axisLine: { show: false },
+            axisLabel: { 
+                color: '#94a3b8', 
+                fontSize: 11,
+                formatter: (v: number) => `¥${v.toFixed(2)}`
+            },
+            splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }
+        },
+        series: [
+            {
+                type: 'line',
+                data: prices,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 8,
+                lineStyle: { color: lineColor, width: 3 },
+                itemStyle: { 
+                    color: lineColor,
+                    borderColor: '#1e293b',
+                    borderWidth: 2
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: areaColorStart },
+                        { offset: 1, color: areaColorEnd }
+                    ])
+                },
+                markLine: {
+                    silent: true,
+                    symbol: 'none',
+                    lineStyle: { color: '#64748b', type: 'dashed', width: 1 },
+                    data: [{ yAxis: currentPrice.value, label: { show: false } }]
+                }
+            }
+        ]
+    };
+    
+    predictionChart.setOption(option);
+};
+
+// 组件卸载时销毁图表
+watch(() => props.visible, (val) => {
+    if (!val && predictionChart) {
+        predictionChart.dispose();
+        predictionChart = null;
+    }
+});
 
 // 复制 prompt 到剪贴板
 const copyPrompt = async () => {
