@@ -646,6 +646,115 @@ class AIService:
         return res_json["choices"][0]["message"]["content"]
 
     @staticmethod
+    def _call_openai_structured(
+        api_key: str,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        proxy: str = None,
+        is_precise: bool = False,
+        future_dates: List[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        使用 OpenAI 原生结构化输出（JSON mode + Function Calling）
+        返回: {"text": 分析文本, "structured": 结构化数据}
+        """
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        
+        # 定义结构化输出的 function
+        if is_precise and future_dates:
+            # 精准分析：包含预测数据
+            functions = [{
+                "name": "submit_stock_analysis",
+                "description": "提交股票分析结果，包含信号、摘要和价格预测",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "signal": {
+                            "type": "string",
+                            "enum": ["bullish", "cautious", "bearish"],
+                            "description": "分析信号：bullish=看涨, cautious=谨慎, bearish=看跌"
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "一句话总结，50字以内"
+                        },
+                        "prediction": {
+                            "type": "array",
+                            "description": "未来5个交易日的价格预测",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "date": {"type": "string", "description": "日期 YYYY-MM-DD"},
+                                    "price": {"type": "number", "description": "预测收盘价"},
+                                    "change_pct": {"type": "number", "description": "相对当前价涨跌幅%"}
+                                },
+                                "required": ["date", "price", "change_pct"]
+                            }
+                        }
+                    },
+                    "required": ["signal", "summary", "prediction"]
+                }
+            }]
+        else:
+            # 快速分析：只有信号和摘要
+            functions = [{
+                "name": "submit_stock_analysis",
+                "description": "提交股票分析结果",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "signal": {
+                            "type": "string",
+                            "enum": ["bullish", "cautious", "bearish"],
+                            "description": "分析信号：bullish=看涨, cautious=谨慎, bearish=看跌"
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "一句话总结，50字以内"
+                        }
+                    },
+                    "required": ["signal", "summary"]
+                }
+            }]
+        
+        # 修改 prompt，要求调用 function
+        enhanced_prompt = user_prompt + "\n\n请完成分析后，调用 submit_stock_analysis 函数提交结构化结果。"
+        
+        data = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": enhanced_prompt},
+            ],
+            "functions": functions,
+            "function_call": {"name": "submit_stock_analysis"}
+        }
+        
+        res_json = AIService._make_request(
+            "POST", url, proxy=proxy, headers=headers, json=data, timeout=120
+        )
+        
+        # 提取结果
+        message = res_json["choices"][0]["message"]
+        text_content = message.get("content", "")
+        
+        # 提取 function call 结果
+        structured = {}
+        if "function_call" in message:
+            try:
+                args = message["function_call"].get("arguments", "{}")
+                structured = json.loads(args)
+            except:
+                pass
+        
+        return {"text": text_content, "structured": structured}
+
+    @staticmethod
     def _call_gemini(
         api_key: str,
         model: str,
@@ -671,6 +780,111 @@ class AIService:
             return res_json["candidates"][0]["content"]["parts"][0]["text"]
         except (KeyError, IndexError):
             return "Gemini 返回了无法解析的数据: " + json.dumps(res_json)
+
+    @staticmethod
+    def _call_gemini_structured(
+        api_key: str,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        proxy: str = None,
+        is_precise: bool = False,
+        future_dates: List[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        使用 Gemini 原生结构化输出（JSON mode）
+        返回: {"text": 分析文本, "structured": 结构化数据}
+        """
+        if not model:
+            model = "gemini-1.5-flash"
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+
+        full_prompt = f"{system_prompt}\n\nUser Request:\n{user_prompt}"
+
+        # 构建 response schema
+        if is_precise and future_dates:
+            response_schema = {
+                "type": "object",
+                "properties": {
+                    "analysis": {
+                        "type": "string",
+                        "description": "详细的股票分析内容，使用 Markdown 格式"
+                    },
+                    "signal": {
+                        "type": "string",
+                        "enum": ["bullish", "cautious", "bearish"],
+                        "description": "分析信号"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "一句话总结，50字以内"
+                    },
+                    "prediction": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "date": {"type": "string"},
+                                "price": {"type": "number"},
+                                "change_pct": {"type": "number"}
+                            },
+                            "required": ["date", "price", "change_pct"]
+                        }
+                    }
+                },
+                "required": ["analysis", "signal", "summary", "prediction"]
+            }
+        else:
+            response_schema = {
+                "type": "object",
+                "properties": {
+                    "analysis": {
+                        "type": "string",
+                        "description": "详细的股票分析内容，使用 Markdown 格式"
+                    },
+                    "signal": {
+                        "type": "string",
+                        "enum": ["bullish", "cautious", "bearish"],
+                        "description": "分析信号"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "一句话总结，50字以内"
+                    }
+                },
+                "required": ["analysis", "signal", "summary"]
+            }
+
+        data = {
+            "contents": [{"parts": [{"text": full_prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": response_schema
+            }
+        }
+
+        logger.info(f"调用 Gemini 结构化输出 API，模型: {model}")
+        res_json = AIService._make_request(
+            "POST", url, proxy=proxy, headers=headers, json=data, timeout=120
+        )
+        
+        try:
+            text = res_json["candidates"][0]["content"]["parts"][0]["text"]
+            # Gemini JSON mode 直接返回 JSON 字符串
+            structured = json.loads(text)
+            return {
+                "text": structured.get("analysis", ""),
+                "structured": {
+                    "signal": structured.get("signal", "cautious"),
+                    "summary": structured.get("summary", ""),
+                    "prediction": structured.get("prediction", [])
+                }
+            }
+        except (KeyError, IndexError, json.JSONDecodeError) as e:
+            logger.error(f"Gemini 结构化输出解析失败: {e}")
+            return {"text": "", "structured": {}}
 
     @staticmethod
     def _call_claude(
@@ -865,22 +1079,74 @@ signal 取值说明：
         last_error = None
         for attempt in range(max_retries):
             try:
+                # OpenAI 和 Gemini 使用原生结构化输出
                 if provider.lower() == "openai" or provider.lower() == "gpt":
+                    try:
+                        # 尝试使用结构化输出
+                        structured_result = AIService._call_openai_structured(
+                            api_key, model, system_prompt, prompt, proxy,
+                            is_precise, future_dates
+                        )
+                        result = structured_result["text"] or ""
+                        structured = structured_result["structured"]
+                        
+                        # 如果结构化数据有效，直接使用
+                        if structured.get("signal"):
+                            # OpenAI function call 可能没有返回文本，需要补充分析
+                            if not result:
+                                # 再调用一次获取分析文本
+                                result = AIService._call_openai(
+                                    api_key, model, system_prompt, structured_prompt, proxy
+                                )
+                            return {
+                                "result": result,
+                                "signal": structured.get("signal", "cautious"),
+                                "summary": structured.get("summary", "")[:100],
+                                "prediction": structured.get("prediction", [])
+                            }
+                    except Exception as e:
+                        logger.warning(f"OpenAI 结构化输出失败，回退到普通模式: {e}")
+                    
+                    # 回退到普通模式
                     result = AIService._call_openai(
                         api_key, model, system_prompt, structured_prompt, proxy
                     )
+                    
                 elif provider.lower() == "gemini":
+                    try:
+                        # 尝试使用结构化输出
+                        structured_result = AIService._call_gemini_structured(
+                            api_key, model, system_prompt, prompt, proxy,
+                            is_precise, future_dates
+                        )
+                        result = structured_result["text"]
+                        structured = structured_result["structured"]
+                        
+                        # 如果结构化数据有效，直接使用
+                        if structured.get("signal"):
+                            return {
+                                "result": result,
+                                "signal": structured.get("signal", "cautious"),
+                                "summary": structured.get("summary", "")[:100],
+                                "prediction": structured.get("prediction", [])
+                            }
+                    except Exception as e:
+                        logger.warning(f"Gemini 结构化输出失败，回退到普通模式: {e}")
+                    
+                    # 回退到普通模式
                     result = AIService._call_gemini(
                         api_key, model, system_prompt, structured_prompt, proxy
                     )
+                    
                 elif provider.lower() == "claude":
+                    # Claude 暂不支持原生结构化输出，使用提示词方式
                     result = AIService._call_claude(
                         api_key, model, system_prompt, structured_prompt, proxy
                     )
                 else:
-                    return {"result": f"不支持的模型提供商: {provider}", "signal": "cautious", "summary": ""}
+                    return {"result": f"不支持的模型提供商: {provider}", "signal": "cautious", "summary": "", "prediction": []}
                 
-                # 提取信号
+                # 从文本结果中提取信号（回退方案）
                 signal_data = AIService.extract_signal_from_result(result)
                 
                 # 提取预测数据（仅精准分析）
