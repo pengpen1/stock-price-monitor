@@ -168,20 +168,28 @@ def analyze_stock(req: AnalyzeRequest):
     trade_history = []
     ai_history = []
     
+    # 获取资金流向数据
+    money_flow = monitor.get_money_flow(req.code).get("data", [])
+    
     # 根据分析类型获取不同范围的数据
+    extra_data = None
+    dragon_tiger = None
+    
     if req.type == "fast":
         minute = monitor.get_minute_data(req.code).get("data", [])
         kline = monitor.get_kline_data(req.code, "day", 120).get("data", [])
-        # 快速分析：当天大盘数据
+        # 快速分析：当天大盘数据 + 最近2天资金流向
         market_data = {
             "index": monitor.index_data,
             "stats": monitor.market_stats,
             "days": 1
         }
+        # 资金流向取最近2天
+        money_flow_days = 2
     else:
         minute = monitor.get_minute_data(req.code).get("data", []) 
         kline = monitor.get_kline_data(req.code, "day", 240).get("data", [])
-        # 精准分析：最近3天大盘数据 + 历史记录
+        # 精准分析：最近3天大盘数据 + 历史记录 + 最近3天资金流向
         stats_history = monitor.get_market_stats_history(3).get("data", [])
         market_data = {
             "index": monitor.index_data,
@@ -192,9 +200,19 @@ def analyze_stock(req: AnalyzeRequest):
         # 获取交易记录和 AI 分析历史
         trade_history = records_manager.get_trade_records_for_analysis(req.code, 10)
         ai_history = records_manager.get_ai_records_for_analysis(req.code, 5)
+        # 资金流向取最近3天
+        money_flow_days = 3
+        # 获取额外数据（换手率、量比、均线、市盈率等）
+        extra_data = monitor.get_stock_extra_data(req.code).get("data", {})
+        # 获取龙虎榜数据
+        dragon_tiger = monitor.get_dragon_tiger(req.code).get("data", [])
         
-    # 格式化提示词（包含大盘数据和历史记录）
-    prompt = AIService.format_data_for_prompt(basic, minute, kline, req.inputs, market_data, trade_history, ai_history)
+    # 格式化提示词（包含大盘数据、历史记录和资金流向）
+    prompt = AIService.format_data_for_prompt(
+        basic, minute, kline, req.inputs, market_data, 
+        trade_history, ai_history, money_flow, money_flow_days,
+        extra_data, dragon_tiger
+    )
     
     # 调用 LLM 并获取结构化结果
     llm_result = AIService.call_llm_with_signal(req.provider, req.api_key, req.model, prompt, req.proxy)
@@ -308,6 +326,25 @@ def get_ai_records(stock_code: Optional[str] = None, limit: int = 50):
 def get_stock_ai_records(stock_code: str, limit: int = 50):
     """获取指定股票的 AI 分析记录"""
     return records_manager.get_ai_records(stock_code, limit)
+
+# ========== 持仓计算 API ==========
+
+@app.get("/records/position/{stock_code}")
+def get_position(stock_code: str):
+    """根据交易记录计算持仓成本和数量"""
+    return records_manager.calculate_position(stock_code)
+
+# ========== 股票额外数据 API ==========
+
+@app.get("/stock/{code}/extra")
+def get_stock_extra(code: str):
+    """获取股票额外数据（换手率、量比、均线、市盈率等）"""
+    return monitor.get_stock_extra_data(code)
+
+@app.get("/stock/{code}/dragon-tiger")
+def get_dragon_tiger(code: str):
+    """获取龙虎榜数据"""
+    return monitor.get_dragon_tiger(code)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

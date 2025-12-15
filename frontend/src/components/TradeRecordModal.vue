@@ -32,8 +32,8 @@
           </div>
         </div>
 
-        <!-- 成交价格 -->
-        <div>
+        <!-- 买入/卖出价格（非做T模式） -->
+        <div v-if="form.type !== 'T'">
           <label class="block text-sm font-medium text-slate-700 mb-2">成交价格</label>
           <div class="relative">
             <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
@@ -45,6 +45,43 @@
               placeholder="0.00"
             >
           </div>
+        </div>
+
+        <!-- 做T模式：买入和卖出价格 -->
+        <div v-if="form.type === 'T'" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">买入价格</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
+              <input 
+                v-model.number="form.buy_price" 
+                type="number" 
+                step="0.01"
+                class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="0.00"
+              >
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">卖出价格</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
+              <input 
+                v-model.number="form.sell_price" 
+                type="number" 
+                step="0.01"
+                class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="0.00"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- 做T盈亏提示 -->
+        <div v-if="form.type === 'T' && form.buy_price > 0 && form.sell_price > 0" class="text-sm">
+          <span :class="tProfit >= 0 ? 'text-red-500' : 'text-green-500'">
+            做T {{ tProfit >= 0 ? '盈利' : '亏损' }}: ¥{{ Math.abs(tProfit).toFixed(2) }}/手
+          </span>
         </div>
 
         <!-- 手数 -->
@@ -121,27 +158,53 @@ const tradeTypes: { value: 'B' | 'S' | 'T'; label: string; activeClass: string }
 const form = ref({
   type: 'B' as 'B' | 'S' | 'T',
   price: 0,
+  buy_price: 0,  // 做T买入价
+  sell_price: 0, // 做T卖出价
   quantity: 1,
   trade_time: '',
   reason: ''
 })
 
+// 做T盈亏计算（每手）
+const tProfit = computed(() => {
+  if (form.value.type !== 'T') return 0
+  return (form.value.sell_price - form.value.buy_price) * 100
+})
+
 // 表单验证
 const isValid = computed(() => {
-  return form.value.price > 0 && form.value.quantity > 0 && form.value.reason.trim()
+  const hasReason = form.value.reason.trim()
+  const hasQuantity = form.value.quantity > 0
+  
+  if (form.value.type === 'T') {
+    // 做T需要买入和卖出价格都填写
+    return form.value.buy_price > 0 && form.value.sell_price > 0 && hasQuantity && hasReason
+  }
+  return form.value.price > 0 && hasQuantity && hasReason
 })
 
 // 监听弹窗打开，初始化表单
 watch(() => props.visible, (val) => {
   if (val) {
     if (props.editRecord) {
-      // 编辑模式
+      // 编辑模式 - 解析做T的买卖价格
+      const record = props.editRecord
+      let buyPrice = 0, sellPrice = 0
+      if (record.type === 'T' && record.reason) {
+        // 尝试从reason中解析买卖价格（格式：买入:xx 卖出:xx ...）
+        const buyMatch = record.reason.match(/买入[:：](\d+\.?\d*)/)
+        const sellMatch = record.reason.match(/卖出[:：](\d+\.?\d*)/)
+        if (buyMatch) buyPrice = parseFloat(buyMatch[1])
+        if (sellMatch) sellPrice = parseFloat(sellMatch[1])
+      }
       form.value = {
-        type: props.editRecord.type,
-        price: props.editRecord.price,
-        quantity: props.editRecord.quantity,
-        trade_time: props.editRecord.trade_time.replace(' ', 'T'),
-        reason: props.editRecord.reason
+        type: record.type,
+        price: record.price,
+        buy_price: buyPrice || record.price,
+        sell_price: sellPrice || record.price,
+        quantity: record.quantity,
+        trade_time: record.trade_time.replace(' ', 'T'),
+        reason: record.reason
       }
     } else {
       // 新增模式
@@ -150,6 +213,8 @@ watch(() => props.visible, (val) => {
       form.value = {
         type: 'B',
         price: 0,
+        buy_price: 0,
+        sell_price: 0,
         quantity: 1,
         trade_time: timeStr,
         reason: ''
@@ -167,8 +232,22 @@ const submit = async () => {
   
   loading.value = true
   try {
+    // 构建提交数据
+    let price = form.value.price
+    let reason = form.value.reason
+    
+    // 做T模式：价格取平均值，reason前面加上买卖价格信息
+    if (form.value.type === 'T') {
+      price = (form.value.buy_price + form.value.sell_price) / 2
+      const profitInfo = tProfit.value >= 0 ? `盈利${tProfit.value.toFixed(2)}元/手` : `亏损${Math.abs(tProfit.value).toFixed(2)}元/手`
+      reason = `买入:${form.value.buy_price} 卖出:${form.value.sell_price} ${profitInfo} | ${form.value.reason}`
+    }
+    
     const data = {
-      ...form.value,
+      type: form.value.type,
+      price,
+      quantity: form.value.quantity,
+      reason,
       stock_code: props.stockCode,
       trade_time: form.value.trade_time.replace('T', ' ')
     }
