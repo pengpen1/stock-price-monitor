@@ -125,8 +125,7 @@
                     </div>
 
                     <!-- 分析结果 -->
-                    <div class="rendered-markdown bg-gray-800/30 p-8 rounded-xl border border-gray-700/50"
-                        v-html="renderedResult"></div>
+                    <MarkdownView :source="result" :stream="true"></MarkdownView>
                     <div class="flex justify-end pt-4">
                         <button @click="step = 'input'" v-if="type === 'precise'"
                             class="px-4 py-2 border border-blue-500 text-blue-400 rounded hover:bg-blue-500/10 mr-3 transition-colors">重新调整参数</button>
@@ -144,6 +143,7 @@ import { ref, watch, computed, nextTick } from 'vue';
 import { marked } from 'marked';
 import * as echarts from 'echarts';
 import { analyzeStock, getSettings, getStockPosition } from '../api';
+import MarkdownView from './markdown/MarkdownView.vue';
 
 // 预测数据类型
 interface PredictionItem {
@@ -428,138 +428,3 @@ const copyPrompt = async () => {
     }
 };
 </script>
-
-<style scoped>
-/* Basic styles for markdown content */
-.rendered-markdown :deep(h1) {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 1rem;
-    margin-top: 1.5rem;
-}
-
-.rendered-markdown :deep(h2) {
-    font-size: 1.25rem;
-    line-height: 1.75rem;
-    font-weight: 700;
-    color: #93c5fd;
-    margin-bottom: 0.75rem;
-    margin-top: 1.25rem;
-}
-
-.rendered-markdown :deep(h3) {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-    font-weight: 700;
-    color: #bfdbfe;
-    margin-bottom: 0.5rem;
-    margin-top: 1rem;
-}
-
-.rendered-markdown :deep(p) {
-    margin-bottom: 0.75rem;
-    color: #d1d5db;
-    line-height: 1.625;
-}
-
-.rendered-markdown :deep(ul) {
-    list-style-type: disc;
-    list-style-position: inside;
-    margin-bottom: 1rem;
-    color: #d1d5db;
-}
-
-.rendered-markdown :deep(ol) {
-    list-style-type: decimal;
-    list-style-position: inside;
-    margin-bottom: 1rem;
-    color: #d1d5db;
-}
-
-.rendered-markdown :deep(li) {
-    margin-bottom: 0.25rem;
-}
-
-.rendered-markdown :deep(strong) {
-    color: white;
-    font-weight: 700;
-}
-
-.rendered-markdown :deep(code) {
-    background-color: #374151;
-    padding: 0.125rem 0.25rem;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    color: #fde047;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.rendered-markdown :deep(pre) {
-    background-color: #111827;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    overflow-x: auto;
-    margin-bottom: 1rem;
-    border: 1px solid #374151;
-}
-
-.rendered-markdown :deep(pre code) {
-    background-color: transparent;
-    padding: 0;
-    color: #d1d5db;
-}
-
-.rendered-markdown :deep(blockquote) {
-    border-left-width: 4px;
-    border-left-color: #4b5563;
-    padding-left: 1rem;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-    font-style: italic;
-    color: #9ca3af;
-    background-color: rgba(31, 41, 55, 0.3);
-    border-top-right-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
-
-.rendered-markdown :deep(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1rem;
-    margin-top: 0.5rem;
-}
-
-.rendered-markdown :deep(th) {
-    border: 1px solid #4b5563;
-    padding: 0.5rem 0.75rem;
-    background-color: #1f2937;
-    text-align: left;
-    color: #e5e7eb;
-}
-
-.rendered-markdown :deep(td) {
-    border: 1px solid #4b5563;
-    padding: 0.5rem 0.75rem;
-    color: #d1d5db;
-}
-
-.rendered-markdown :deep(a) {
-    color: #60a5fa;
-    text-decoration: underline;
-}
-
-.rendered-markdown :deep(a:hover) {
-    color: #93c5fd;
-}
-
-.rendered-markdown :deep(hr) {
-    border-color: #374151;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-    border-top-width: 1px;
-}
-</style>
