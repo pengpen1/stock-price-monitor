@@ -1,6 +1,16 @@
 <script setup lang="ts">
-import { VueMarkdownRenderer } from "vue-mdr";
 import CodeBlockRenderer from "./CodeBlockRenderer.vue";
+import MermaidRenderer from "./MermaidRenderer.vue";
+import { createMarkdownRenderer } from "vue-mdr";
+
+const VueMarkdownRenderer = createMarkdownRenderer({
+  codeBlock: {
+    renderer: CodeBlockRenderer,
+  },
+  mermaid: {
+    renderer: MermaidRenderer,
+  },
+});
 
 const { source, theme = "dark" } = defineProps<{
   source: string;
@@ -14,11 +24,7 @@ const { source, theme = "dark" } = defineProps<{
     class="prose prose-slate mx-auto my-10 max-w-none"
     :class="{ 'stream-wrapper': stream, 'prose-invert': theme === 'dark' }"
   >
-    <VueMarkdownRenderer
-      :source
-      :theme
-      :code-block-renderer="CodeBlockRenderer"
-    ></VueMarkdownRenderer>
+    <VueMarkdownRenderer :source :theme></VueMarkdownRenderer>
   </article>
 </template>
 
