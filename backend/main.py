@@ -5,6 +5,7 @@ import uvicorn
 import threading
 from ai_service import AIService
 from records import RecordsManager
+from simulation import SimulationManager
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 
@@ -31,6 +32,7 @@ app.add_middleware(
 
 monitor = StockMonitor()
 records_manager = RecordsManager(get_data_dir())
+simulation_manager = SimulationManager(get_data_dir())
 
 @app.get("/")
 def read_root():
@@ -373,6 +375,220 @@ def get_stock_extra(code: str):
 def get_dragon_tiger(code: str):
     """获取龙虎榜数据"""
     return monitor.get_dragon_tiger(code)
+
+# ========== 实盘模拟 API ==========
+
+class SimulationCreateRequest(BaseModel):
+    stock_code: str
+    stock_name: str
+    total_days: int  # 7-50
+    initial_capital: float = 1000000  # 默认100万
+
+class SimulationTradeRequest(BaseModel):
+    session_id: str
+    trade_type: str  # buy/sell/skip
+    price: float = 0
+    quantity: int = 0
+    reason: str = ""
+    current_date: str = ""
+
+class SimulationAnalyzeRequest(BaseModel):
+    session_id: str
+    provider: str
+    api_key: str
+    model: str
+    proxy: Optional[str] = None
+
+@app.post("/simulation/create")
+def create_simulation(req: SimulationCreateRequest):
+    """创建模拟会话"""
+    # 验证天数范围
+    if req.total_days < 7 or req.total_days > 50:
+        return {"status": "error", "message": "模拟天数需在7-50之间"}
+    
+    # 获取足够的K线数据
+    kline_result = monitor.get_kline_data(req.stock_code, "day", req.total_days + 30)
+    kline_data = kline_result.get("data", [])
+    
+    if len(kline_data) < req.total_days + 1:
+        return {"status": "error", "message": f"历史数据不足，需要至少 {req.total_days + 1} 天"}
+    
+    return simulation_manager.create_session(
+        stock_code=req.stock_code,
+        stock_name=req.stock_name,
+        total_days=req.total_days,
+        initial_capital=req.initial_capital,
+        kline_data=kline_data
+    )
+
+@app.get("/simulation/sessions")
+def get_simulation_sessions(stock_code: Optional[str] = None, status: Optional[str] = None, limit: int = 50):
+    """获取模拟会话列表"""
+    return simulation_manager.get_sessions(stock_code, status, limit)
+
+@app.get("/simulation/{session_id}")
+def get_simulation_session(session_id: str):
+    """获取模拟会话详情"""
+    return simulation_manager.get_session(session_id)
+
+@app.get("/simulation/{session_id}/kline")
+def get_simulation_kline(session_id: str):
+    """获取模拟会话的K线数据（只返回到当前日期）"""
+    session_result = simulation_manager.get_session(session_id)
+    if session_result.get("status") != "success":
+        return session_result
+    
+    session = session_result["session"]
+    # 获取完整K线数据
+    kline_result = monitor.get_kline_data(session["stock_code"], "day", session["total_days"] + 30)
+    kline_data = kline_result.get("data", [])
+    
+    if not kline_data:
+        return {"status": "error", "message": "无法获取K线数据"}
+    
+    # 计算可见范围：从起始索引到当前天数
+    start_idx = session.get("kline_start_idx", 0)
+    visible_end = start_idx + session["current_day"] + 1  # +1 显示当天
+    
+    # 返回可见的K线数据
+    visible_kline = kline_data[max(0, start_idx - 30):visible_end]  # 多返回30天历史用于均线计算
+    
+    # 当前交易日数据
+    current_day_data = kline_data[visible_end - 1] if visible_end <= len(kline_data) else None
+    
+    return {
+        "status": "success",
+        "kline": visible_kline,
+        "current_day": current_day_data,
+        "session": session
+    }
+
+@app.get("/simulation/{session_id}/minute/{date}")
+def get_simulation_minute(session_id: str, date: str):
+    """获取模拟会话某一天的分时数据（历史分时）"""
+    session_result = simulation_manager.get_session(session_id)
+    if session_result.get("status") != "success":
+        return session_result
+    
+    session = session_result["session"]
+    # 获取历史分时数据
+    minute_data = monitor.get_history_minute_data(session["stock_code"], date)
+    return minute_data
+
+@app.post("/simulation/trade")
+def execute_simulation_trade(req: SimulationTradeRequest):
+    """执行模拟交易"""
+    result = simulation_manager.execute_trade(
+        session_id=req.session_id,
+        trade_type=req.trade_type,
+        price=req.price,
+        quantity=req.quantity,
+        reason=req.reason,
+        current_date=req.current_date
+    )
+    
+    # 如果模拟完成，自动清仓并计算最终收益
+    if result.get("status") == "success":
+        session = result.get("session", {})
+        if session.get("status") == "completed":
+            # 获取最终价格（下一天的收盘价）
+            kline_result = monitor.get_kline_data(session["stock_code"], "day", session["total_days"] + 30)
+            kline_data = kline_result.get("data", [])
+            
+            if kline_data:
+                end_idx = session.get("kline_start_idx", 0) + session["total_days"]
+                final_price = kline_data[end_idx]["close"] if end_idx < len(kline_data) else kline_data[-1]["close"]
+                
+                # 完成会话（自动清仓）
+                complete_result = simulation_manager.complete_session(req.session_id, final_price)
+                if complete_result.get("status") == "success":
+                    result["session"] = complete_result["session"]
+    
+    return result
+
+@app.post("/simulation/{session_id}/pause")
+def pause_simulation(session_id: str):
+    """暂停模拟"""
+    return simulation_manager.pause_session(session_id)
+
+@app.post("/simulation/{session_id}/resume")
+def resume_simulation(session_id: str):
+    """继续模拟"""
+    return simulation_manager.resume_session(session_id)
+
+@app.post("/simulation/{session_id}/abandon")
+def abandon_simulation(session_id: str):
+    """放弃模拟"""
+    return simulation_manager.abandon_session(session_id)
+
+@app.delete("/simulation/{session_id}")
+def delete_simulation(session_id: str):
+    """删除模拟记录"""
+    return simulation_manager.delete_session(session_id)
+
+@app.post("/simulation/analyze")
+def analyze_simulation(req: SimulationAnalyzeRequest):
+    """AI分析模拟结果"""
+    session_result = simulation_manager.get_session(req.session_id)
+    if session_result.get("status") != "success":
+        return session_result
+    
+    session = session_result["session"]
+    
+    # 获取K线数据
+    kline_result = monitor.get_kline_data(session["stock_code"], "day", session["total_days"] + 30)
+    kline_data = kline_result.get("data", [])
+    
+    # 计算最终价格（模拟结束后一天的收盘价）
+    end_idx = session.get("kline_start_idx", 0) + session["total_days"]
+    final_price = kline_data[end_idx]["close"] if end_idx < len(kline_data) else kline_data[-1]["close"]
+    
+    # 计算结果
+    result = simulation_manager.calculate_result(session, final_price)
+    
+    # 格式化AI分析提示词
+    prompt = simulation_manager.format_for_ai_analysis(session, kline_data, result)
+    
+    # 调用AI分析
+    try:
+        from ai_service import AIService
+        llm_response = AIService.call_llm(req.provider, req.api_key, req.model, prompt, req.proxy, max_retries=2)
+        
+        # 解析JSON结果
+        import re
+        import json
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', llm_response)
+        if json_match:
+            ai_result = json.loads(json_match.group(1))
+        else:
+            # 尝试直接解析
+            json_match = re.search(r'\{[\s\S]*\}', llm_response)
+            if json_match:
+                ai_result = json.loads(json_match.group())
+            else:
+                ai_result = {
+                    "score": 60,
+                    "grade": "C",
+                    "strengths": [],
+                    "weaknesses": [],
+                    "suggestions": [],
+                    "analysis": llm_response
+                }
+        
+        return {
+            "status": "success",
+            "result": result,
+            "ai_result": ai_result,
+            "session": session
+        }
+    except Exception as e:
+        return {
+            "status": "success",
+            "result": result,
+            "ai_result": None,
+            "error": str(e),
+            "session": session
+        }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

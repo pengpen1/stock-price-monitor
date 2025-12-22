@@ -829,6 +829,54 @@ class StockMonitor:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    def get_history_minute_data(self, code: str, date: str) -> dict:
+        """
+        获取历史某一天的分时数据
+        注意：新浪接口只能获取最近几天的分时数据，更早的历史分时数据可能无法获取
+        Args:
+            code: 股票代码
+            date: 日期，格式 YYYY-MM-DD
+        """
+        try:
+            code = self._normalize_code(code)
+            # 尝试获取更多分时数据来找到指定日期
+            url = f"https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_{code}_data=/CN_MarketDataService.getKLineData?symbol={code}&scale=1&ma=no&datalen=1000"
+            headers = {
+                "Referer": "https://finance.sina.com.cn/",
+                "User-Agent": "Mozilla/5.0"
+            }
+            resp = requests.get(url, headers=headers, timeout=10, proxies={"http": None, "https": None})
+            content = resp.text
+            
+            import re
+            match = re.search(r'\[.*\]', content)
+            if match:
+                import json
+                data = json.loads(match.group())
+                # 筛选指定日期的数据
+                result = []
+                for item in data:
+                    day_str = item.get("day", "")
+                    date_part = day_str[:10] if len(day_str) >= 10 else ""
+                    if date_part == date:
+                        time_part = day_str[-8:] if len(day_str) >= 8 else ""
+                        result.append({
+                            "date": date_part,
+                            "time": time_part,
+                            "price": float(item.get("close", 0)),
+                            "open": float(item.get("open", 0)),
+                            "high": float(item.get("high", 0)),
+                            "low": float(item.get("low", 0)),
+                            "volume": int(item.get("volume", 0)),
+                        })
+                
+                if result:
+                    return {"status": "success", "data": result}
+                return {"status": "error", "message": f"未找到 {date} 的分时数据，可能超出可查询范围"}
+            return {"status": "error", "message": "解析失败"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
     def get_kline_data(self, code: str, period: str = "day", count: int = 120) -> dict:
         """
         获取K线数据

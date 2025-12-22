@@ -67,10 +67,23 @@ defineProps<{
 const emit = defineEmits(['update:visible'])
 
 const currentVersion = '1.0.3'
-const releaseDate = '2025-12-15'
+const releaseDate = '2025-12-22'
 
 // 更新日志数据
 const changelog = ref([
+  {
+    version: '1.1.0',
+    date: '2025-12-22',
+    changes: [
+      { type: 'feature', text: '实盘模拟功能，基于历史数据进行模拟交易练习' },
+      { type: 'feature', text: '支持自定义模拟天数（7-50天）和初始资金' },
+      { type: 'feature', text: '模拟交易支持买入/卖出/跳过操作，需填写理由' },
+      { type: 'feature', text: '模拟过程中可查看当日分时图辅助决策' },
+      { type: 'feature', text: 'AI 智能评分，对模拟交易进行综合评价和建议' },
+      { type: 'feature', text: '模拟记录管理，支持暂停/继续/查看历史记录' },
+      { type: 'improve', text: '详情页新增实盘模拟入口' },
+    ]
+  },
   {
     version: '1.0.3',
     date: '2025-12-15',

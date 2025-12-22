@@ -280,4 +280,148 @@ export const getStockPosition = async (stockCode: string) => {
   return response.data;
 };
 
+// ========== 实盘模拟 API ==========
+
+// 模拟会话类型
+export interface SimulationSession {
+  id: string;
+  stock_code: string;
+  stock_name: string;
+  start_date: string;
+  end_date: string;
+  current_day: number;
+  total_days: number;
+  initial_capital: number;
+  current_capital: number;
+  position: number;
+  cost_price: number;
+  status: 'running' | 'paused' | 'completed' | 'abandoned';
+  trades: SimulationTrade[];
+  kline_start_idx: number;
+  created_at: string;
+  updated_at: string;
+  final_price?: number;           // 最终价格
+  final_profit_rate?: number;     // 最终收益率
+}
+
+// 模拟交易记录类型
+export interface SimulationTrade {
+  day: number;
+  date: string;
+  type: 'buy' | 'sell' | 'skip';
+  price: number;
+  quantity: number;
+  reason: string;
+  capital_after: number;
+  position_after: number;
+  auto?: boolean;  // 是否自动交易（如自动清仓）
+}
+
+// 模拟结果类型
+export interface SimulationResult {
+  final_capital: number;
+  profit_rate: number;
+  win_rate: number;
+  max_drawdown: number;
+  total_trades: number;
+  position_value: number;
+}
+
+// AI评分结果类型
+export interface SimulationAIResult {
+  score: number;
+  grade: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  analysis: string;
+}
+
+// 创建模拟会话
+export const createSimulation = async (data: {
+  stock_code: string;
+  stock_name: string;
+  total_days: number;
+  initial_capital?: number;
+}) => {
+  const response = await api.post('/simulation/create', data);
+  return response.data;
+};
+
+// 获取模拟会话列表
+export const getSimulationSessions = async (stockCode?: string, status?: string, limit: number = 50) => {
+  const params: Record<string, any> = { limit };
+  if (stockCode) params.stock_code = stockCode;
+  if (status) params.status = status;
+  const response = await api.get('/simulation/sessions', { params });
+  return response.data;
+};
+
+// 获取模拟会话详情
+export const getSimulationSession = async (sessionId: string) => {
+  const response = await api.get(`/simulation/${sessionId}`);
+  return response.data;
+};
+
+// 获取模拟会话的K线数据
+export const getSimulationKline = async (sessionId: string) => {
+  const response = await api.get(`/simulation/${sessionId}/kline`);
+  return response.data;
+};
+
+// 获取模拟会话某天的分时数据
+export const getSimulationMinute = async (sessionId: string, date: string) => {
+  const response = await api.get(`/simulation/${sessionId}/minute/${date}`);
+  return response.data;
+};
+
+// 执行模拟交易
+export const executeSimulationTrade = async (data: {
+  session_id: string;
+  trade_type: 'buy' | 'sell' | 'skip';
+  price?: number;
+  quantity?: number;
+  reason?: string;
+  current_date?: string;
+}) => {
+  const response = await api.post('/simulation/trade', data);
+  return response.data;
+};
+
+// 暂停模拟
+export const pauseSimulation = async (sessionId: string) => {
+  const response = await api.post(`/simulation/${sessionId}/pause`);
+  return response.data;
+};
+
+// 继续模拟
+export const resumeSimulation = async (sessionId: string) => {
+  const response = await api.post(`/simulation/${sessionId}/resume`);
+  return response.data;
+};
+
+// 放弃模拟
+export const abandonSimulation = async (sessionId: string) => {
+  const response = await api.post(`/simulation/${sessionId}/abandon`);
+  return response.data;
+};
+
+// 删除模拟记录
+export const deleteSimulation = async (sessionId: string) => {
+  const response = await api.delete(`/simulation/${sessionId}`);
+  return response.data;
+};
+
+// AI分析模拟结果
+export const analyzeSimulation = async (data: {
+  session_id: string;
+  provider: string;
+  api_key: string;
+  model: string;
+  proxy?: string;
+}) => {
+  const response = await api.post('/simulation/analyze', data);
+  return response.data;
+};
+
 export default api;

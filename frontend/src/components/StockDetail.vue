@@ -14,6 +14,22 @@
         </div>
         <div class="text-right">
           <div class="flex items-center gap-2 mb-1 justify-end">
+            <!-- 实盘模拟下拉菜单 -->
+            <div class="relative" ref="simMenuRef">
+              <button @click="showSimMenu = !showSimMenu"
+                class="px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded-md hover:bg-blue-100 hover:border-blue-300 transition-all flex items-center gap-1 whitespace-nowrap">
+                实盘模拟
+                <span class="text-[10px]">▼</span>
+              </button>
+              <div v-if="showSimMenu" class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20 min-w-[130px]">
+                <button @click="openSimulationConfig" class="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 whitespace-nowrap">
+                  + 新建模拟
+                </button>
+                <button @click="openSimulationList" class="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                  模拟记录
+                </button>
+              </div>
+            </div>
             <!-- 复盘记录下拉菜单 -->
             <div class="relative" ref="recordMenuRef">
               <button @click="showRecordMenu = !showRecordMenu"
@@ -135,6 +151,20 @@
     
     <!-- AI 分析历史弹窗 -->
     <AIRecordList v-model:visible="showAIRecordList" :stock-code="code" />
+    
+    <!-- 实盘模拟配置弹窗 -->
+    <SimulationConfigModal v-model:visible="showSimConfigModal" 
+      :stock-code="code" 
+      :stock-name="stockInfo.name || code"
+      :current-price="stockInfo.price || '0'"
+      :price-change="parseFloat(stockInfo.change_percent || '0')"
+      @start="onSimulationStart" />
+    
+    <!-- 实盘模拟记录列表弹窗 -->
+    <SimulationListModal v-model:visible="showSimListModal" 
+      :stock-code="code"
+      @resume="onSimulationResume"
+      @view="onSimulationView" />
   </div>
 </template>
 
@@ -146,17 +176,19 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, CandlestickChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { getStockDetail, getKlineData, getStockTradeRecords, type TradeRecord } from '../api'
+import { getStockDetail, getKlineData, getStockTradeRecords, type TradeRecord, type SimulationSession } from '../api'
 import AIAnalysisModal from './AIAnalysisModal.vue'
 import TradeRecordList from './TradeRecordList.vue'
 import TradeRecordModal from './TradeRecordModal.vue'
 import AIRecordList from './AIRecordList.vue'
+import SimulationConfigModal from './SimulationConfigModal.vue'
+import SimulationListModal from './SimulationListModal.vue'
 
 use([CanvasRenderer, LineChart, CandlestickChart, BarChart, GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent])
 
 const { t } = useI18n()
 const props = defineProps<{ code: string }>()
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'startSimulation', 'viewSimulation'])
 
 const loading = ref(true)
 const stockInfo = ref<any>({})
@@ -177,9 +209,39 @@ const showAddTradeRecord = ref(false)
 const showAIRecordList = ref(false)
 const tradeRecords = ref<TradeRecord[]>([])
 
+// 实盘模拟相关
+const showSimMenu = ref(false)
+const simMenuRef = ref<HTMLElement | null>(null)
+const showSimConfigModal = ref(false)
+const showSimListModal = ref(false)
+
 const openAIModal = (type: 'fast' | 'precise') => {
   aiType.value = type
   showAiModal.value = true
+}
+
+// 实盘模拟菜单操作
+const openSimulationConfig = () => {
+  showSimMenu.value = false
+  showSimConfigModal.value = true
+}
+
+const openSimulationList = () => {
+  showSimMenu.value = false
+  showSimListModal.value = true
+}
+
+const onSimulationStart = (session: SimulationSession) => {
+  // 跳转到模拟页面
+  emit('startSimulation', session)
+}
+
+const onSimulationResume = (session: SimulationSession) => {
+  emit('startSimulation', session)
+}
+
+const onSimulationView = (session: SimulationSession) => {
+  emit('viewSimulation', session)
 }
 
 // 复盘记录菜单操作
@@ -218,6 +280,9 @@ const loadTradeRecords = async () => {
 const handleClickOutside = (e: MouseEvent) => {
   if (recordMenuRef.value && !recordMenuRef.value.contains(e.target as Node)) {
     showRecordMenu.value = false
+  }
+  if (simMenuRef.value && !simMenuRef.value.contains(e.target as Node)) {
+    showSimMenu.value = false
   }
 }
 

@@ -43,6 +43,16 @@
 
 ![history](docs/history.png)
 
+### 实盘模拟
+
+- 基于历史数据进行模拟交易练习
+- 自定义模拟天数（7-50天）和初始资金
+- 时间回溯：K线图只显示到当前模拟日期
+- 交易操作：买入/卖出/跳过，需填写操作理由
+- 分时图查看：可查看当日分时图辅助决策
+- AI 智能评分：模拟结束后 AI 综合评价交易表现
+- 记录管理：支持暂停/继续/查看历史模拟记录
+
 ### 预警推送
 
 - 止盈/止损价格预警
@@ -152,6 +162,7 @@ stock-price-monitor/
 │   ├── monitor.py         # 股票监控核心
 │   ├── ai_service.py      # AI 分析服务
 │   ├── records.py         # 交易记录管理
+│   ├── simulation.py      # 实盘模拟管理
 │   └── data/              # 本地数据存储
 ├── frontend/              # Electron + Vue 前端
 │   ├── electron/          # Electron 主进程
@@ -173,6 +184,7 @@ stock-price-monitor/
 - `settings.json` - 应用设置
 - `alerts.json` - 预警配置
 - `records.json` - 交易记录和 AI 分析历史
+- `simulations.json` - 实盘模拟记录
 
 ## License
 
