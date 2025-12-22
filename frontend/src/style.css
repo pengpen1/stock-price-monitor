@@ -1,5 +1,7 @@
 /* 导入 TailwindCSS */
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@plugin "@tailwindcss/typography";
 
 /* 自定义基础样式 */
 body {

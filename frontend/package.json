@@ -20,12 +20,14 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "axios": "^1.13.2",
     "echarts": "^6.0.0",
     "marked": "^17.0.1",
     "vue": "^3.5.24",
     "vue-echarts": "^8.0.1",
-    "vue-i18n": "^9.14.5"
+    "vue-i18n": "^9.14.5",
+    "vue-mdr": "^0.0.14"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
