@@ -7,11 +7,18 @@
           {{ $t("dashboard.title") }}
         </h1>
         <div class="flex items-center gap-2">
-          <button
+          <!-- <button
             @click="toggleLanguage"
             class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
           >
             {{ locale === "en" ? "中文" : "English" }}
+          </button> -->
+          <button
+            @click="$emit('openJournal')"
+            class="px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+            title="交易日志"
+          >
+            📝
           </button>
           <button
             @click="showUserGuide = true"
@@ -645,7 +652,7 @@ import TradeRecordModal from "./TradeRecordModal.vue";
 import IndexDetailModal from "./IndexDetailModal.vue";
 
 const { locale } = useI18n();
-const emit = defineEmits(["openSettings", "openDetail"]);
+const emit = defineEmits(["openSettings", "openDetail", "openJournal"]);
 
 // 市场涨跌统计
 const marketStats = ref<any>({});

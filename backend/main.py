@@ -299,11 +299,14 @@ def set_data_path(data: dict):
 
 class TradeRecordRequest(BaseModel):
     stock_code: str
+    stock_name: Optional[str] = None
     type: str  # B/S/T
     price: float
     quantity: int
     reason: str
     trade_time: Optional[str] = None
+    mood: Optional[str] = "calm"  # calm/anxious/panic/fear/excited
+    level: Optional[int] = 2  # 1/2/3
 
 class TradeRecordUpdateRequest(BaseModel):
     type: Optional[str] = None
@@ -311,6 +314,9 @@ class TradeRecordUpdateRequest(BaseModel):
     quantity: Optional[int] = None
     reason: Optional[str] = None
     trade_time: Optional[str] = None
+    mood: Optional[str] = None
+    level: Optional[int] = None
+    stock_name: Optional[str] = None
 
 @app.post("/records/trade")
 def add_trade_record(req: TradeRecordRequest):
@@ -321,7 +327,10 @@ def add_trade_record(req: TradeRecordRequest):
         price=req.price,
         quantity=req.quantity,
         reason=req.reason,
-        trade_time=req.trade_time
+        trade_time=req.trade_time,
+        mood=req.mood,
+        level=req.level,
+        stock_name=req.stock_name
     )
 
 @app.put("/records/trade/{record_id}")
@@ -363,6 +372,33 @@ def get_stock_ai_records(stock_code: str, limit: int = 50):
 def get_position(stock_code: str):
     """根据交易记录计算持仓成本和数量"""
     return records_manager.calculate_position(stock_code)
+
+# ========== 交易风格分析 API ==========
+
+@app.get("/records/analysis")
+def get_trade_style_analysis(stock_code: Optional[str] = None):
+    """获取交易风格分析"""
+    return records_manager.get_trade_style_analysis(stock_code)
+
+@app.get("/records/stocks")
+def get_trade_stock_codes():
+    """获取所有有交易记录的股票代码"""
+    codes = records_manager.get_all_stock_codes()
+    return {"status": "success", "codes": codes}
+
+@app.get("/records/export/md")
+def export_trade_records_md(stock_code: Optional[str] = None):
+    """导出交易记录为 Markdown 格式"""
+    md_content = records_manager.export_to_markdown(stock_code)
+    return {"status": "success", "content": md_content}
+
+class ImportMdRequest(BaseModel):
+    content: str
+
+@app.post("/records/import/md")
+def import_trade_records_md(req: ImportMdRequest):
+    """从 Markdown 格式导入交易记录"""
+    return records_manager.import_from_markdown(req.content)
 
 # ========== 股票额外数据 API ==========
 

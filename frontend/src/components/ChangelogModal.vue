@@ -66,7 +66,7 @@ defineProps<{
 
 const emit = defineEmits(['update:visible'])
 
-const currentVersion = '1.0.3'
+const currentVersion = '1.1.0'
 const releaseDate = '2025-12-22'
 
 // 更新日志数据
@@ -81,7 +81,12 @@ const changelog = ref([
       { type: 'feature', text: '模拟过程中可查看当日分时图辅助决策' },
       { type: 'feature', text: 'AI 智能评分，对模拟交易进行综合评价和建议' },
       { type: 'feature', text: '模拟记录管理，支持暂停/继续/查看历史记录' },
+      { type: 'feature', text: '交易日志升级，新增心态和分级字段' },
+      { type: 'feature', text: '交易日志页面，统一查看所有股票交易记录' },
+      { type: 'feature', text: '交易风格分析，分析心态与胜率关系' },
+      { type: 'feature', text: '交易记录导出/导入 Markdown 格式' },
       { type: 'improve', text: '详情页新增实盘模拟入口' },
+      { type: 'improve', text: '交易记录弹窗新增扩大按钮' },
     ]
   },
   {

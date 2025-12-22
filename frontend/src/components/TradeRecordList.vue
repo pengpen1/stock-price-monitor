@@ -11,6 +11,9 @@
           <button @click="openAddModal" class="px-3 py-1.5 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm">
             + 添加记录
           </button>
+          <button @click="openJournal" class="px-3 py-1.5 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm" title="打开交易日志">
+            ⛶ 扩大
+          </button>
           <button @click="close" class="text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -107,7 +110,7 @@ const props = defineProps<{
   stockCode: string
 }>()
 
-const emit = defineEmits(['update:visible'])
+const emit = defineEmits(['update:visible', 'openJournal'])
 
 const loading = ref(false)
 const records = ref<TradeRecord[]>([])
@@ -148,6 +151,11 @@ const loadRecords = async () => {
 
 const close = () => {
   emit('update:visible', false)
+}
+
+const openJournal = () => {
+  close()
+  emit('openJournal')
 }
 
 const openAddModal = () => {

@@ -1,3 +1,106 @@
 {
-  "sessions": []
+  "sessions": [
+    {
+      "id": "8a17ea32-11b9-490e-859d-039a2f4f24ed",
+      "stock_code": "sz002050",
+      "stock_name": "三花智控",
+      "start_date": "2025-12-10",
+      "end_date": "2025-12-18",
+      "current_day": 7,
+      "total_days": 7,
+      "initial_capital": 1000000.0,
+      "current_capital": 1020184.0,
+      "position": 0,
+      "cost_price": 0,
+      "status": "completed",
+      "trades": [
+        {
+          "day": 0,
+          "date": "2025-12-10",
+          "type": "skip",
+          "price": 46.6,
+          "quantity": 0,
+          "reason": "观望",
+          "capital_after": 1000000.0,
+          "position_after": 0
+        },
+        {
+          "day": 1,
+          "date": "2025-12-11",
+          "type": "skip",
+          "price": 45.17,
+          "quantity": 0,
+          "reason": "观望",
+          "capital_after": 1000000.0,
+          "position_after": 0
+        },
+        {
+          "day": 2,
+          "date": "2025-12-12",
+          "type": "skip",
+          "price": 45.04,
+          "quantity": 0,
+          "reason": "观望",
+          "capital_after": 1000000.0,
+          "position_after": 0
+        },
+        {
+          "day": 3,
+          "date": "2025-12-15",
+          "type": "skip",
+          "price": 43.54,
+          "quantity": 0,
+          "reason": "观望",
+          "capital_after": 1000000.0,
+          "position_after": 0
+        },
+        {
+          "day": 4,
+          "date": "2025-12-16",
+          "type": "buy",
+          "price": 42.87,
+          "quantity": 11600,
+          "reason": "赌反弹",
+          "capital_after": 502708.00000000006,
+          "position_after": 11600
+        },
+        {
+          "day": 5,
+          "date": "2025-12-17",
+          "type": "sell",
+          "price": 44.02,
+          "quantity": 11600,
+          "reason": "吃了反弹就走",
+          "capital_after": 1013340.0000000001,
+          "position_after": 0
+        },
+        {
+          "day": 6,
+          "date": "2025-12-18",
+          "type": "buy",
+          "price": 42.88,
+          "quantity": 11600,
+          "reason": "再来",
+          "capital_after": 515932.00000000006,
+          "position_after": 11600
+        },
+        {
+          "day": 7,
+          "date": "2025-12-18",
+          "type": "sell",
+          "price": 43.47,
+          "quantity": 11600,
+          "reason": "模拟结束自动清仓",
+          "capital_after": 1020184.0,
+          "position_after": 0,
+          "auto": true
+        }
+      ],
+      "kline_start_idx": 29,
+      "created_at": "2025-12-22T15:18:01.493255",
+      "updated_at": "2025-12-22T15:20:13.775363",
+      "final_price": 43.47,
+      "final_profit_rate": 2.02
+    }
+  ]
 }

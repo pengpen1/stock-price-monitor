@@ -144,7 +144,7 @@
     <AIAnalysisModal v-model:visible="showAiModal" :stock-code="code" :type="aiType" />
     
     <!-- 交易记录列表弹窗 -->
-    <TradeRecordList v-model:visible="showTradeRecordList" :stock-code="code" />
+    <TradeRecordList v-model:visible="showTradeRecordList" :stock-code="code" @openJournal="$emit('openJournal')" />
     
     <!-- 添加交易记录弹窗 -->
     <TradeRecordModal v-model:visible="showAddTradeRecord" :stock-code="code" @saved="onTradeRecordSaved" />
@@ -188,7 +188,7 @@ use([CanvasRenderer, LineChart, CandlestickChart, BarChart, GridComponent, Toolt
 
 const { t } = useI18n()
 const props = defineProps<{ code: string }>()
-const emit = defineEmits(['back', 'startSimulation', 'viewSimulation'])
+const emit = defineEmits(['back', 'startSimulation', 'viewSimulation', 'openJournal'])
 
 const loading = ref(true)
 const stockInfo = ref<any>({})

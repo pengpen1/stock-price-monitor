@@ -5,10 +5,11 @@ import FloatWindow from './components/FloatWindow.vue'
 import Settings from './components/Settings.vue'
 import StockDetail from './components/StockDetail.vue'
 import SimulationPage from './components/SimulationPage.vue'
+import TradeJournalPage from './components/TradeJournalPage.vue'
 import type { SimulationSession } from './api'
 
 // 页面状态
-type Page = 'dashboard' | 'settings' | 'detail' | 'simulation'
+type Page = 'dashboard' | 'settings' | 'detail' | 'simulation' | 'journal'
 const currentPage = ref<Page>('dashboard')
 const isFloatWindow = ref(false)
 const detailCode = ref('')
@@ -44,6 +45,18 @@ const onSimulationComplete = () => {
   currentPage.value = 'detail'
 }
 
+// 打开交易日志页面
+const openJournal = () => {
+  journalFromPage.value = currentPage.value  // 记录来源页面
+  currentPage.value = 'journal'
+}
+
+// 从交易日志返回（根据来源页面返回）
+const journalFromPage = ref<Page>('dashboard')
+const onJournalBack = () => {
+  currentPage.value = journalFromPage.value === 'detail' ? 'detail' : 'dashboard'
+}
+
 onMounted(() => {
   isFloatWindow.value = window.location.hash === '#/float'
   window.addEventListener('hashchange', () => {
@@ -59,11 +72,13 @@ onMounted(() => {
     <StockDetail v-else-if="currentPage === 'detail'" :code="detailCode" 
       @back="backToDashboard" 
       @startSimulation="startSimulation"
-      @viewSimulation="viewSimulation" />
+      @viewSimulation="viewSimulation"
+      @openJournal="openJournal" />
     <SimulationPage v-else-if="currentPage === 'simulation'" 
       :session-id="simulationSessionId"
       @back="onSimulationBack"
       @complete="onSimulationComplete" />
-    <Dashboard v-else @openSettings="openSettings" @openDetail="openStockDetail" />
+    <TradeJournalPage v-else-if="currentPage === 'journal'" @back="onJournalBack" />
+    <Dashboard v-else @openSettings="openSettings" @openDetail="openStockDetail" @openJournal="openJournal" />
   </template>
 </template>

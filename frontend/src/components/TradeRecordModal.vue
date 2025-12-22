@@ -115,6 +115,49 @@
             placeholder="记录你的交易逻辑和原因..."
           ></textarea>
         </div>
+
+        <!-- 当前心态 -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">当前心态</label>
+          <div class="grid grid-cols-5 gap-2">
+            <button 
+              v-for="m in moodOptions" :key="m.value"
+              @click="form.mood = m.value"
+              :class="[
+                'py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1',
+                form.mood === m.value 
+                  ? m.activeClass 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ]"
+            >
+              <span class="text-base">{{ m.emoji }}</span>
+              <span>{{ m.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 交易分级 -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">交易分级</label>
+          <div class="space-y-2">
+            <button 
+              v-for="l in levelOptions" :key="l.value"
+              @click="form.level = l.value"
+              :class="[
+                'w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-left flex items-center gap-3',
+                form.level === l.value 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ]"
+            >
+              <span class="text-lg">{{ l.stars }}</span>
+              <div>
+                <div>{{ l.label }}</div>
+                <div class="text-xs opacity-75">{{ l.desc }}</div>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 底部按钮 -->
@@ -155,6 +198,22 @@ const tradeTypes: { value: 'B' | 'S' | 'T'; label: string; activeClass: string }
   { value: 'T', label: '做T', activeClass: 'bg-blue-500 text-white' },
 ]
 
+// 心态选项
+const moodOptions = [
+  { value: 'calm', label: '平静', emoji: '😌', activeClass: 'bg-blue-500 text-white' },
+  { value: 'anxious', label: '焦虑', emoji: '😰', activeClass: 'bg-yellow-500 text-white' },
+  { value: 'panic', label: '慌张', emoji: '😱', activeClass: 'bg-orange-500 text-white' },
+  { value: 'fear', label: '恐惧', emoji: '😨', activeClass: 'bg-red-500 text-white' },
+  { value: 'excited', label: '亢奋', emoji: '🤩', activeClass: 'bg-purple-500 text-white' },
+]
+
+// 分级选项
+const levelOptions = [
+  { value: 1, label: '一级交易', stars: '⭐', desc: '85%以上盈利概率' },
+  { value: 2, label: '二级交易', stars: '⭐⭐', desc: '70%以上盈利概率' },
+  { value: 3, label: '三级交易', stars: '⭐⭐⭐', desc: '凑热闹局' },
+]
+
 const form = ref({
   type: 'B' as 'B' | 'S' | 'T',
   price: 0,
@@ -162,7 +221,9 @@ const form = ref({
   sell_price: 0, // 做T卖出价
   quantity: 1,
   trade_time: '',
-  reason: ''
+  reason: '',
+  mood: 'calm' as string,
+  level: 2 as number
 })
 
 // 做T盈亏计算（每手）
@@ -204,7 +265,9 @@ watch(() => props.visible, (val) => {
         sell_price: sellPrice || record.price,
         quantity: record.quantity,
         trade_time: record.trade_time.replace(' ', 'T'),
-        reason: record.reason
+        reason: record.reason,
+        mood: record.mood || 'calm',
+        level: record.level || 2
       }
     } else {
       // 新增模式
@@ -217,7 +280,9 @@ watch(() => props.visible, (val) => {
         sell_price: 0,
         quantity: 1,
         trade_time: timeStr,
-        reason: ''
+        reason: '',
+        mood: 'calm',
+        level: 2
       }
     }
   }
@@ -249,7 +314,9 @@ const submit = async () => {
       quantity: form.value.quantity,
       reason,
       stock_code: props.stockCode,
-      trade_time: form.value.trade_time.replace('T', ' ')
+      trade_time: form.value.trade_time.replace('T', ' '),
+      mood: form.value.mood,
+      level: form.value.level
     }
     
     if (isEdit.value && props.editRecord) {

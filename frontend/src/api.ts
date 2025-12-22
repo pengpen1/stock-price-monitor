@@ -195,10 +195,13 @@ export const exportData = async () => {
 export interface TradeRecord {
   id: string;
   stock_code: string;
+  stock_name?: string;
   type: 'B' | 'S' | 'T';  // 买入/卖出/做T
   price: number;
   quantity: number;
   reason: string;
+  mood: 'calm' | 'anxious' | 'panic' | 'fear' | 'excited';  // 心态
+  level: 1 | 2 | 3;  // 交易分级
   trade_time: string;
   created_at: string;
 }
@@ -215,14 +218,28 @@ export interface AIRecord {
   datetime: string;
 }
 
+// 交易风格分析类型
+export interface TradeStyleAnalysis {
+  total_records: number;
+  mood_stats: Record<string, number>;
+  level_stats: Record<number, number>;
+  level_profit: Record<number, { win: number; lose: number }>;
+  mood_profit: Record<string, { win: number; lose: number }>;
+  level_win_rate: Record<number, number>;
+  mood_win_rate: Record<string, number>;
+}
+
 // 添加交易记录
 export const addTradeRecord = async (data: {
   stock_code: string;
+  stock_name?: string;
   type: 'B' | 'S' | 'T';
   price: number;
   quantity: number;
   reason: string;
   trade_time?: string;
+  mood?: string;
+  level?: number;
 }) => {
   const response = await api.post('/records/trade', data);
   return response.data;
@@ -235,6 +252,9 @@ export const updateTradeRecord = async (recordId: string, data: {
   quantity?: number;
   reason?: string;
   trade_time?: string;
+  mood?: string;
+  level?: number;
+  stock_name?: string;
 }) => {
   const response = await api.put(`/records/trade/${recordId}`, data);
   return response.data;
@@ -421,6 +441,36 @@ export const analyzeSimulation = async (data: {
   proxy?: string;
 }) => {
   const response = await api.post('/simulation/analyze', data);
+  return response.data;
+};
+
+// ========== 交易风格分析 API ==========
+
+// 获取交易风格分析
+export const getTradeStyleAnalysis = async (stockCode?: string) => {
+  const params: Record<string, any> = {};
+  if (stockCode) params.stock_code = stockCode;
+  const response = await api.get('/records/analysis', { params });
+  return response.data;
+};
+
+// 获取所有有交易记录的股票代码
+export const getTradeStockCodes = async () => {
+  const response = await api.get('/records/stocks');
+  return response.data;
+};
+
+// 导出交易记录为 Markdown
+export const exportTradeRecordsMd = async (stockCode?: string) => {
+  const params: Record<string, any> = {};
+  if (stockCode) params.stock_code = stockCode;
+  const response = await api.get('/records/export/md', { params });
+  return response.data;
+};
+
+// 从 Markdown 导入交易记录
+export const importTradeRecordsMd = async (content: string) => {
+  const response = await api.post('/records/import/md', { content });
   return response.data;
 };
 
