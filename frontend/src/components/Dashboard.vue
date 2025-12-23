@@ -2,10 +2,19 @@
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
     <div class="max-w-6xl mx-auto">
       <!-- 头部区域 -->
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold text-slate-800">
-          {{ $t("dashboard.title") }}
-        </h1>
+      <div class="flex justify-between items-center mb-5">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20"
+          >
+            <img src="../assets/stock.png" class="opacity-90" alt="stock" />
+          </div>
+          <h1
+            class="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent"
+          >
+            {{ $t("dashboard.title") }}
+          </h1>
+        </div>
         <div class="flex items-center gap-2">
           <!-- <button
             @click="toggleLanguage"
@@ -15,28 +24,28 @@
           </button> -->
           <button
             @click="$emit('openJournal')"
-            class="px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+            class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
             title="交易日志"
           >
             📝
           </button>
           <button
             @click="showUserGuide = true"
-            class="px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+            class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
             title="使用手册"
           >
             📖
           </button>
           <button
             @click="showChangelog = true"
-            class="px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+            class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
             title="更新日志"
           >
             📋
           </button>
           <button
             @click="$emit('openSettings')"
-            class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+            class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
           >
             ⚙️
           </button>
@@ -48,20 +57,49 @@
         <div
           v-for="idx in indexList"
           :key="idx.code"
-          class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow"
+          class="group relative bg-white rounded-xl p-4 shadow-sm border border-slate-100 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
           @click="openIndexDetail(idx.code)"
         >
-          <div class="text-xs text-slate-500">{{ idx.name }}</div>
-          <div class="flex items-baseline gap-2">
-            <span
-              class="text-lg font-bold"
-              :class="getIndexClass(idx.change_percent)"
-              >{{ idx.price }}</span
-            >
-            <span class="text-xs" :class="getIndexClass(idx.change_percent)">
-              {{ parseFloat(idx.change_percent) >= 0 ? "+" : ""
-              }}{{ idx.change_percent }}%
-            </span>
+          <!-- 背景装饰 -->
+          <div
+            class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            :class="
+              parseFloat(idx.change_percent) >= 0
+                ? 'bg-gradient-to-br from-red-50/50 to-transparent'
+                : 'bg-gradient-to-br from-green-50/50 to-transparent'
+            "
+          ></div>
+          <!-- 左侧装饰条 -->
+          <div
+            class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+            :class="
+              parseFloat(idx.change_percent) >= 0
+                ? 'bg-gradient-to-b from-red-400 to-red-500'
+                : 'bg-gradient-to-b from-green-400 to-green-500'
+            "
+          ></div>
+          <div class="relative">
+            <div class="text-xs text-slate-500 mb-1.5 font-medium">
+              {{ idx.name }}
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span
+                class="text-xl font-bold tracking-tight"
+                :class="getIndexClass(idx.change_percent)"
+                >{{ idx.price }}</span
+              >
+              <span
+                class="text-xs font-semibold px-1.5 py-0.5 rounded"
+                :class="
+                  parseFloat(idx.change_percent) >= 0
+                    ? 'text-red-600 bg-red-50'
+                    : 'text-green-600 bg-green-50'
+                "
+              >
+                {{ parseFloat(idx.change_percent) >= 0 ? "+" : ""
+                }}{{ idx.change_percent }}%
+              </span>
+            </div>
           </div>
         </div>
         <!-- 涨跌统计卡片 -->
@@ -89,45 +127,62 @@
       </div>
 
       <!-- 添加股票 -->
-      <div
-        class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-4"
-      >
-        <div class="flex gap-3">
-          <div class="relative flex-1">
-            <span
-              class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+      <div class="flex gap-2 mb-4">
+        <div class="relative flex-1">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </span>
-            <input
-              v-model="newStockCode"
-              :placeholder="$t('dashboard.placeholder')"
-              @keyup.enter="handleAddStock"
-              :disabled="loading"
-              class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-            />
-          </div>
-          <button
-            @click="handleAddStock"
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </span>
+          <input
+            v-model="newStockCode"
+            :placeholder="$t('dashboard.placeholder')"
+            @keyup.enter="handleAddStock"
             :disabled="loading"
-            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 disabled:from-blue-300 disabled:to-blue-400"
-          >
-            {{ loading ? $t("dashboard.adding") : $t("dashboard.add") }}
-          </button>
+            class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all duration-200 placeholder:text-slate-400"
+          />
         </div>
+        <button
+          @click="handleAddStock"
+          :disabled="loading"
+          class="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 hover:shadow-md hover:shadow-blue-500/20 disabled:from-blue-300 disabled:to-blue-400 disabled:cursor-not-allowed transition-all duration-200 min-w-[72px] flex items-center justify-center gap-1.5"
+        >
+          <svg
+            v-if="loading"
+            class="animate-spin h-3.5 w-3.5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <span>{{
+            loading ? $t("dashboard.adding") : $t("dashboard.add")
+          }}</span>
+        </button>
       </div>
 
       <!-- 错误提示 -->
@@ -165,17 +220,17 @@
       </div>
 
       <!-- 分组和排序工具栏 -->
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
-          <span class="text-sm text-slate-500">分组:</span>
+          <span class="text-sm text-slate-500 font-medium">分组:</span>
           <button
             @click="currentGroup = ''"
             :class="
               !currentGroup
-                ? 'bg-blue-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
             "
-            class="px-3 py-1 text-xs rounded-full transition-colors"
+            class="px-3.5 py-1.5 text-xs rounded-lg transition-all duration-200 font-medium"
           >
             全部
           </button>
@@ -186,25 +241,25 @@
             @contextmenu="showGroupContextMenu($event, g)"
             :class="
               currentGroup === g
-                ? 'bg-blue-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
             "
-            class="px-3 py-1 text-xs rounded-full transition-colors"
+            class="px-3.5 py-1.5 text-xs rounded-lg transition-all duration-200 font-medium"
           >
             {{ g }}
           </button>
           <button
             @click="showAddGroupModal = true"
-            class="px-2 py-1 text-xs text-blue-500 border border-blue-200 rounded-full hover:bg-blue-50"
+            class="px-3 py-1.5 text-xs text-blue-500 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 hover:border-blue-200 transition-all duration-200 font-medium"
           >
             + 新建
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-sm text-slate-500">排序:</span>
+          <span class="text-sm text-slate-500 font-medium">排序:</span>
           <select
             v-model="sortBy"
-            class="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none"
+            class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all duration-200 cursor-pointer"
           >
             <option value="">默认</option>
             <option value="change_desc">涨幅↓</option>
@@ -219,61 +274,63 @@
       >
         <table class="w-full table-fixed">
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-100">
-              <th class="w-8 px-1 py-3"></th>
+            <tr
+              class="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-100"
+            >
+              <th class="w-8 px-1 py-3.5"></th>
               <th
-                class="w-24 px-2 py-3 text-left text-xs font-semibold text-slate-500"
+                class="w-24 px-2 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 代码
               </th>
               <th
-                class="w-20 px-2 py-3 text-left text-xs font-semibold text-slate-500"
+                class="w-20 px-2 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 名称
               </th>
               <th
-                class="w-20 px-2 py-3 text-right text-xs font-semibold text-slate-500"
+                class="w-20 px-2 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 当前价
               </th>
               <th
-                class="w-20 px-2 py-3 text-right text-xs font-semibold text-slate-500 cursor-pointer hover:text-blue-500"
+                class="w-20 px-2 py-3.5 text-right text-xs font-semibold text-slate-500 cursor-pointer hover:text-blue-500 transition-colors uppercase tracking-wider"
                 @click="toggleSort"
               >
                 涨跌幅 {{ sortIcon }}
               </th>
               <th
-                class="w-16 px-2 py-3 text-right text-xs font-semibold text-slate-500"
+                class="w-16 px-2 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 最高
               </th>
               <th
-                class="w-16 px-2 py-3 text-right text-xs font-semibold text-slate-500"
+                class="w-16 px-2 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 最低
               </th>
               <th
-                class="w-20 px-2 py-3 text-right text-xs font-semibold text-slate-500"
+                class="w-20 px-2 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 成交额
               </th>
               <th
-                class="w-16 px-2 py-3 text-left text-xs font-semibold text-slate-500"
+                class="w-16 px-2 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 分组
               </th>
               <th
-                class="w-28 px-2 py-3 text-center text-xs font-semibold text-slate-500"
+                class="w-28 px-2 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider"
               >
                 操作
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-50">
             <tr
               v-for="(stock, index) in filteredStocks"
               :key="stock.code"
-              class="hover:bg-slate-50 transition-colors cursor-pointer"
+              class="group hover:bg-gradient-to-r hover:from-slate-50 hover:to-transparent transition-all duration-200 cursor-pointer"
               draggable="true"
               @dragstart="handleDragStart(index, $event)"
               @dragover.prevent
@@ -281,13 +338,13 @@
               @click="handleRowClick(stock.code, $event)"
               @contextmenu.prevent="showContextMenu($event, stock)"
             >
-              <td class="px-1 py-3 cursor-move" @click.stop>
+              <td class="px-1 py-3.5 cursor-move" @click.stop>
                 <span
-                  class="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                  class="text-slate-300 group-hover:text-slate-500 text-sm font-bold transition-colors"
                   >⋮⋮</span
                 >
               </td>
-              <td class="px-2 py-3 text-xs font-mono text-slate-600">
+              <td class="px-2 py-3.5 text-xs font-mono text-slate-600">
                 {{ stock.code }}
                 <span
                   v-if="alerts[stock.code]?.enabled"
@@ -295,20 +352,28 @@
                   >🔔</span
                 >
               </td>
-              <td class="px-2 py-3 text-sm font-medium text-slate-800 truncate">
+              <td
+                class="px-2 py-3.5 text-sm font-medium text-slate-800 truncate"
+              >
                 {{ stock.name }}
               </td>
               <td
-                class="px-2 py-3 text-sm text-right font-semibold tabular-nums"
+                class="px-2 py-3.5 text-sm text-right font-bold tabular-nums"
                 :class="getPriceClass(stock.change_percent)"
               >
                 {{ stock.price }}
               </td>
-              <td
-                class="px-2 py-3 text-sm text-right font-medium tabular-nums"
-                :class="getPriceClass(stock.change_percent)"
-              >
-                <span class="inline-flex items-center gap-0.5">
+              <td class="px-2 py-3.5 text-right tabular-nums">
+                <span
+                  class="inline-flex items-center gap-0.5 text-sm font-semibold px-2 py-0.5 rounded-md"
+                  :class="
+                    parseFloat(stock.change_percent) > 0
+                      ? 'text-red-600 bg-red-50'
+                      : parseFloat(stock.change_percent) < 0
+                      ? 'text-green-600 bg-green-50'
+                      : 'text-slate-600 bg-slate-50'
+                  "
+                >
                   <span v-if="parseFloat(stock.change_percent) > 0">↑</span>
                   <span v-else-if="parseFloat(stock.change_percent) < 0"
                     >↓</span
@@ -317,48 +382,48 @@
                 </span>
               </td>
               <td
-                class="px-2 py-3 text-sm text-right text-slate-600 tabular-nums"
+                class="px-2 py-3.5 text-sm text-right text-slate-600 tabular-nums"
               >
                 {{ stock.high }}
               </td>
               <td
-                class="px-2 py-3 text-sm text-right text-slate-600 tabular-nums"
+                class="px-2 py-3.5 text-sm text-right text-slate-600 tabular-nums"
               >
                 {{ stock.low }}
               </td>
-              <td class="px-2 py-3 text-xs text-right text-slate-500">
+              <td class="px-2 py-3.5 text-xs text-right text-slate-500">
                 {{ formatAmount(stock.amount) }}
               </td>
-              <td class="px-2 py-3 text-xs text-slate-500">
+              <td class="px-2 py-3.5 text-xs text-slate-500">
                 <span
                   v-if="stockGroups[stock.code]"
-                  class="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded"
+                  class="px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 rounded-md font-medium border border-blue-100"
                   >{{ stockGroups[stock.code] }}</span
                 >
               </td>
-              <td class="px-2 py-3 text-center" @click.stop>
-                <div class="flex items-center justify-center gap-1">
+              <td class="px-2 py-3.5 text-center" @click.stop>
+                <div class="flex items-center justify-center gap-1.5">
                   <button
                     @click="handleSetFocus(stock.code)"
                     :class="
                       focusedStock === stock.code
-                        ? 'bg-amber-100 text-amber-600 border-amber-300'
-                        : 'text-slate-400 border-slate-200 hover:bg-amber-50'
+                        ? 'bg-amber-100 text-amber-600 border-amber-300 shadow-sm'
+                        : 'text-slate-400 border-slate-200 hover:bg-amber-50 hover:text-amber-500 hover:border-amber-200'
                     "
-                    class="px-1.5 py-0.5 text-xs border rounded"
+                    class="px-2 py-1 text-xs border rounded-lg transition-all duration-200"
                   >
                     ⭐
                   </button>
                   <button
                     @click="openAIModal(stock, 'fast')"
-                    class="px-1.5 py-0.5 text-xs text-purple-500 border border-purple-200 rounded hover:bg-purple-50"
+                    class="px-2 py-1 text-xs text-purple-500 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all duration-200 font-medium"
                     title="快速AI分析"
                   >
                     AI
                   </button>
                   <button
                     @click="openAlertModal(stock)"
-                    class="px-1.5 py-0.5 text-xs text-blue-500 border border-blue-200 rounded hover:bg-blue-50"
+                    class="px-2 py-1 text-xs text-blue-500 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all duration-200"
                   >
                     预警
                   </button>
@@ -366,23 +431,23 @@
                   <div class="relative">
                     <button
                       @click.stop="toggleMoreMenu(stock.code)"
-                      class="px-1.5 py-0.5 text-xs text-slate-500 border border-slate-200 rounded hover:bg-slate-50"
+                      class="px-2 py-1 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
                     >
                       ···
                     </button>
-                    <div 
+                    <div
                       v-if="moreMenuCode === stock.code"
-                      class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-30 min-w-[90px]"
+                      class="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 min-w-[100px]"
                     >
                       <button
                         @click="openQuickTradeRecord(stock)"
-                        class="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                        class="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         添加交易
                       </button>
                       <button
                         @click="handleRemoveStock(stock.code)"
-                        class="w-full px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-50"
+                        class="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 transition-colors"
                       >
                         删除
                       </button>
@@ -403,9 +468,17 @@
         </table>
       </div>
 
-      <!-- 底部状态栏 -->
-      <div class="mt-4 text-center text-xs text-slate-400">
-        {{ $t("dashboard.auto_refresh", { interval: refreshInterval }) }}
+      <!-- 底部语录滚动 -->
+      <div class="mt-4 h-6 overflow-hidden relative">
+        <transition name="quote-fade" mode="out-in">
+          <div
+            :key="currentQuoteIndex"
+            class="text-center text-xs text-slate-400 flex items-center justify-center gap-2"
+          >
+            <span class="text-slate-300">💡</span>
+            <span>{{ stockQuotes[currentQuoteIndex] }}</span>
+          </div>
+        </transition>
       </div>
     </div>
 
@@ -705,6 +778,40 @@ const aiType = ref<"fast" | "precise">("fast");
 // 更新日志和使用手册
 const showChangelog = ref(false);
 const showUserGuide = ref(false);
+
+// 底部语录
+const stockQuotes = [
+  // 财报与规则认知
+  "一季报披露：4月1日-4月30日",
+  "中报披露：7月1日-8月31日",
+  "三季报披露：10月1日-10月31日",
+  "年报披露：次年1月1日-4月30日",
+  "投资有风险，入市需谨慎",
+
+  // 趋势与节奏
+  "补强不补弱，顺势而为",
+  "不要和趋势作对，趋势是你最好的朋友",
+  "牛市不言顶，熊市不言底",
+  "在高潮时警惕，在退潮时理智",
+  "高位横盘不突破，久盘必跌",
+  "宁可错过，不可做错",
+
+  // 量价与技术信号
+  "量在价先，成交量是股价的先行指标",
+  "底部放量要注意，顶部放量要警惕",
+
+  // 纪律 / 风控 / 心态
+  "截断亏损，让利润奔跑",
+  "空仓也是一种操作",
+  "卖飞光荣，套牢可耻",
+  "会买的是徒弟，会卖的是师傅",
+  "不要把所有鸡蛋放在一个篮子里",
+  "知行合一，严格执行交易纪律",
+  "市场永远是对的，错的只是自己",
+];
+
+const currentQuoteIndex = ref(0);
+let quoteIntervalId: ReturnType<typeof setInterval> | null = null;
 
 // 大盘详情弹窗
 const showIndexDetail = ref(false);
@@ -1072,7 +1179,7 @@ const fetchData = async () => {
 
     updateTray();
     if (res.focused_data) updateTrayIcon(res.focused_data);
-    
+
     // 获取市场涨跌统计
     // fetchMarketStats();
   } catch (error) {
@@ -1171,11 +1278,33 @@ const handleGlobalClick = () => {
 onMounted(() => {
   loadSettingsAndStart();
   document.addEventListener("click", handleGlobalClick);
+  // 启动语录轮播
+  quoteIntervalId = setInterval(() => {
+    currentQuoteIndex.value =
+      (currentQuoteIndex.value + 1) % stockQuotes.length;
+  }, 5000);
 });
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
   if (alertCheckId) clearInterval(alertCheckId);
+  if (quoteIntervalId) clearInterval(quoteIntervalId);
   document.removeEventListener("click", handleGlobalClick);
 });
 </script>
+
+<style scoped>
+/* 语录渐隐过渡动画 */
+.quote-fade-enter-active,
+.quote-fade-leave-active {
+  transition: all 0.5s ease;
+}
+.quote-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.quote-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+</style>
