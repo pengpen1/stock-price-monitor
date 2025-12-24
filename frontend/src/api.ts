@@ -475,3 +475,63 @@ export const importTradeRecordsMd = async (content: string) => {
 };
 
 export default api;
+
+
+// ========== 笔记 API ==========
+
+// 笔记元信息类型
+export interface NoteMeta {
+  filename: string;
+  created_at: string;
+  updated_at: string;
+  preview: string;
+  size: number;
+}
+
+// 获取笔记列表
+export const listNotes = async () => {
+  const response = await api.get('/notes');
+  return response.data;
+};
+
+// 获取笔记内容
+export const getNote = async (filename: string) => {
+  const response = await api.get(`/notes/${encodeURIComponent(filename)}`);
+  return response.data;
+};
+
+// 创建笔记
+export const createNoteApi = async (filename: string, content: string = '') => {
+  const response = await api.post('/notes', { filename, content });
+  return response.data;
+};
+
+// 更新笔记
+export const updateNoteApi = async (filename: string, content: string) => {
+  const response = await api.put(`/notes/${encodeURIComponent(filename)}`, { content });
+  return response.data;
+};
+
+// 删除笔记
+export const deleteNoteApi = async (filename: string) => {
+  const response = await api.delete(`/notes/${encodeURIComponent(filename)}`);
+  return response.data;
+};
+
+// 重命名笔记
+export const renameNoteApi = async (filename: string, newName: string) => {
+  const response = await api.put(`/notes/${encodeURIComponent(filename)}/rename`, { new_name: newName });
+  return response.data;
+};
+
+// AI 转换笔记为交易记录
+export const convertNoteToTrades = async (data: {
+  content: string;
+  provider: string;
+  api_key: string;
+  model: string;
+  proxy?: string;
+}) => {
+  const response = await api.post('/notes/convert', data);
+  return response.data;
+};

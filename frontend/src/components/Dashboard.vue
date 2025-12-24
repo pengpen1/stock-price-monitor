@@ -30,6 +30,13 @@
             📝
           </button>
           <button
+            @click="$emit('openNotes')"
+            class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
+            title="笔记"
+          >
+            📓
+          </button>
+          <button
             @click="showUserGuide = true"
             class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all duration-200 cursor-pointer"
             title="使用手册"
@@ -725,7 +732,7 @@ import TradeRecordModal from "./TradeRecordModal.vue";
 import IndexDetailModal from "./IndexDetailModal.vue";
 
 const { locale } = useI18n();
-const emit = defineEmits(["openSettings", "openDetail", "openJournal"]);
+const emit = defineEmits(["openSettings", "openDetail", "openJournal", "openNotes"]);
 
 // 市场涨跌统计
 const marketStats = ref<any>({});

@@ -6,10 +6,11 @@ import Settings from './components/Settings.vue'
 import StockDetail from './components/StockDetail.vue'
 import SimulationPage from './components/SimulationPage.vue'
 import TradeJournalPage from './components/TradeJournalPage.vue'
+import NotesPage from './components/NotesPage.vue'
 import type { SimulationSession } from './api'
 
 // 页面状态
-type Page = 'dashboard' | 'settings' | 'detail' | 'simulation' | 'journal'
+type Page = 'dashboard' | 'settings' | 'detail' | 'simulation' | 'journal' | 'notes'
 const currentPage = ref<Page>('dashboard')
 const isFloatWindow = ref(false)
 const detailCode = ref('')
@@ -57,6 +58,16 @@ const onJournalBack = () => {
   currentPage.value = journalFromPage.value === 'detail' ? 'detail' : 'dashboard'
 }
 
+// 打开笔记页面
+const openNotes = () => {
+  currentPage.value = 'notes'
+}
+
+// 从笔记页面返回
+const onNotesBack = () => {
+  currentPage.value = 'dashboard'
+}
+
 onMounted(() => {
   isFloatWindow.value = window.location.hash === '#/float'
   window.addEventListener('hashchange', () => {
@@ -79,6 +90,7 @@ onMounted(() => {
       @back="onSimulationBack"
       @complete="onSimulationComplete" />
     <TradeJournalPage v-else-if="currentPage === 'journal'" @back="onJournalBack" />
-    <Dashboard v-else @openSettings="openSettings" @openDetail="openStockDetail" @openJournal="openJournal" />
+    <NotesPage v-else-if="currentPage === 'notes'" @back="onNotesBack" />
+    <Dashboard v-else @openSettings="openSettings" @openDetail="openStockDetail" @openJournal="openJournal" @openNotes="openNotes" />
   </template>
 </template>

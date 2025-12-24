@@ -5,7 +5,7 @@ import uvicorn
 import threading
 from ai_service import AIService
 from records import RecordsManager
-from simulation import SimulationManager
+from notes import NotesManager
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 
@@ -32,7 +32,7 @@ app.add_middleware(
 
 monitor = StockMonitor()
 records_manager = RecordsManager(get_data_dir())
-simulation_manager = SimulationManager(get_data_dir())
+notes_manager = NotesManager(get_data_dir())
 
 @app.get("/")
 def read_root():
@@ -625,6 +625,126 @@ def analyze_simulation(req: SimulationAnalyzeRequest):
             "error": str(e),
             "session": session
         }
+
+# ========== 笔记 API ==========
+
+class NoteRequest(BaseModel):
+    filename: str
+    content: Optional[str] = ""
+
+class NoteUpdateRequest(BaseModel):
+    content: str
+
+class NoteRenameRequest(BaseModel):
+    new_name: str
+
+class NoteConvertRequest(BaseModel):
+    content: str
+    provider: str
+    api_key: str
+    model: str
+    proxy: Optional[str] = None
+
+@app.get("/notes")
+def list_notes():
+    """获取笔记列表"""
+    return notes_manager.list_notes()
+
+@app.get("/notes/{filename}")
+def get_note(filename: str):
+    """获取笔记内容"""
+    return notes_manager.get_note(filename)
+
+@app.post("/notes")
+def create_note(req: NoteRequest):
+    """创建笔记"""
+    return notes_manager.create_note(req.filename, req.content)
+
+@app.put("/notes/{filename}")
+def update_note(filename: str, req: NoteUpdateRequest):
+    """更新笔记"""
+    return notes_manager.update_note(filename, req.content)
+
+@app.delete("/notes/{filename}")
+def delete_note(filename: str):
+    """删除笔记"""
+    return notes_manager.delete_note(filename)
+
+@app.put("/notes/{filename}/rename")
+def rename_note(filename: str, req: NoteRenameRequest):
+    """重命名笔记"""
+    return notes_manager.rename_note(filename, req.new_name)
+
+@app.post("/notes/convert")
+def convert_note_to_trades(req: NoteConvertRequest):
+    """AI 分析笔记内容，提取交易记录"""
+    prompt = f"""请分析以下交易笔记内容，提取出所有交易记录。
+
+笔记内容：
+{req.content}
+
+请按以下 JSON 格式返回提取的交易记录：
+```json
+{{
+  "trades": [
+    {{
+      "date": "2025-12-24",
+      "time": "09:30",
+      "stock_code": "002985",
+      "stock_name": "北摩高科",
+      "type": "S",
+      "price": 30.11,
+      "quantity": 500,
+      "reason": "跌破支撑位，执行止损策略"
+    }}
+  ],
+  "summary": "笔记摘要，描述主要交易行为和心态"
+}}
+```
+
+字段说明：
+- date: 交易日期 YYYY-MM-DD
+- time: 交易时间 HH:MM（如无法确定可填 "09:30"）
+- stock_code: 股票代码（6位数字，如 002985）
+- stock_name: 股票名称
+- type: 交易类型 B=买入 S=卖出 T=做T
+- price: 成交价格
+- quantity: 成交数量（股数）
+- reason: 交易原因（从笔记中提取或总结）
+
+注意：
+1. 仔细识别买入和卖出操作
+2. 如果是做T（当天买卖），type 填 T
+3. 如果笔记中没有明确的交易记录，trades 返回空数组
+4. 股票代码需要转换为6位数字格式
+"""
+    
+    try:
+        import re
+        import json as json_module
+        
+        llm_response = AIService.call_llm(
+            req.provider, req.api_key, req.model, prompt, req.proxy, max_retries=2
+        )
+        
+        # 解析 JSON 结果
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', llm_response)
+        if json_match:
+            result = json_module.loads(json_match.group(1))
+        else:
+            json_match = re.search(r'\{[\s\S]*\}', llm_response)
+            if json_match:
+                result = json_module.loads(json_match.group())
+            else:
+                return {"status": "error", "message": "无法解析 AI 返回结果"}
+        
+        return {
+            "status": "success",
+            "trades": result.get("trades", []),
+            "summary": result.get("summary", "")
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -66,27 +66,38 @@ defineProps<{
 
 const emit = defineEmits(['update:visible'])
 
-const currentVersion = '1.1.0'
-const releaseDate = '2025-12-22'
+const currentVersion = '1.2.0'
+const releaseDate = '2025-12-24'
 
 // 更新日志数据
 const changelog = ref([
   {
+    version: '1.2.0',
+    date: '2025-12-24',
+    changes: [
+      { type: 'feature', text: '笔记功能，支持 Markdown 格式编辑和预览' },
+      { type: 'feature', text: '笔记自动保存，3秒无操作自动保存' },
+      { type: 'feature', text: 'AI 智能转换，从笔记中自动提取交易记录' },
+      { type: 'feature', text: '快捷键支持，Ctrl+S 快速保存笔记' },
+      { type: 'improve', text: '心态选项新增"不安"类型' },
+    ]
+  },
+  {
     version: '1.1.0',
     date: '2025-12-22',
     changes: [
-      { type: 'feature', text: '实盘模拟功能，基于历史数据进行模拟交易练习' },
+      { type: 'feature', text: '实盘模拟：基于历史K线数据进行模拟交易练习' },
       { type: 'feature', text: '支持自定义模拟天数（7-50天）和初始资金' },
       { type: 'feature', text: '模拟交易支持买入/卖出/跳过操作，需填写理由' },
       { type: 'feature', text: '模拟过程中可查看当日分时图辅助决策' },
       { type: 'feature', text: 'AI 智能评分，对模拟交易进行综合评价和建议' },
       { type: 'feature', text: '模拟记录管理，支持暂停/继续/查看历史记录' },
-      { type: 'feature', text: '交易日志升级，新增心态和分级字段' },
-      { type: 'feature', text: '交易日志页面，统一查看所有股票交易记录' },
-      { type: 'feature', text: '交易风格分析，分析心态与胜率关系' },
+      { type: 'feature', text: '交易日志页面：统一查看和管理所有股票的交易记录' },
+      { type: 'feature', text: '交易风格分析：分析心态与分级对胜率的影响' },
+      { type: 'feature', text: '交易记录新增心态和分级字段' },
       { type: 'feature', text: '交易记录导出/导入 Markdown 格式' },
       { type: 'improve', text: '详情页新增实盘模拟入口' },
-      { type: 'improve', text: '交易记录弹窗新增扩大按钮' },
+      { type: 'improve', text: '交易记录弹窗新增扩大按钮，可跳转日志页面' },
     ]
   },
   {

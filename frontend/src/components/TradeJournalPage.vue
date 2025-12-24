@@ -212,9 +212,9 @@ const importContent = ref('')
 
 // 标签映射
 const levelLabels: Record<number, string> = { 1: '一级', 2: '二级', 3: '三级' }
-const moodLabels: Record<string, string> = { calm: '平静', anxious: '焦虑', panic: '慌张', fear: '恐惧', excited: '亢奋' }
-const moodEmojis: Record<string, string> = { calm: '😌', anxious: '😰', panic: '😱', fear: '😨', excited: '🤩' }
-const moodColors: Record<string, string> = { calm: 'bg-blue-500', anxious: 'bg-yellow-500', panic: 'bg-orange-500', fear: 'bg-red-500', excited: 'bg-purple-500' }
+const moodLabels: Record<string, string> = { calm: '平静', anxious: '焦虑', uneasy: '不安', panic: '慌张', fear: '恐惧', excited: '亢奋' }
+const moodEmojis: Record<string, string> = { calm: '😌', anxious: '😰', uneasy: '😟', panic: '😱', fear: '😨', excited: '🤩' }
+const moodColors: Record<string, string> = { calm: 'bg-blue-500', anxious: 'bg-yellow-500', uneasy: 'bg-amber-500', panic: 'bg-orange-500', fear: 'bg-red-500', excited: 'bg-purple-500' }
 const typeColors: Record<string, string> = { B: 'bg-red-500', S: 'bg-green-500', T: 'bg-blue-500' }
 const levelBadgeClass: Record<number, string> = { 1: 'bg-green-100 text-green-600', 2: 'bg-blue-100 text-blue-600', 3: 'bg-orange-100 text-orange-600' }
 

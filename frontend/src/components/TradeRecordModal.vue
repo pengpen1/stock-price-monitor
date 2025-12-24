@@ -202,6 +202,7 @@ const tradeTypes: { value: 'B' | 'S' | 'T'; label: string; activeClass: string }
 const moodOptions = [
   { value: 'calm', label: '平静', emoji: '😌', activeClass: 'bg-blue-500 text-white' },
   { value: 'anxious', label: '焦虑', emoji: '😰', activeClass: 'bg-yellow-500 text-white' },
+  { value: 'uneasy', label: '不安', emoji: '😟', activeClass: 'bg-amber-500 text-white' },
   { value: 'panic', label: '慌张', emoji: '😱', activeClass: 'bg-orange-500 text-white' },
   { value: 'fear', label: '恐惧', emoji: '😨', activeClass: 'bg-red-500 text-white' },
   { value: 'excited', label: '亢奋', emoji: '🤩', activeClass: 'bg-purple-500 text-white' },
