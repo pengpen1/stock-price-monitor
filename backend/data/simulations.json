@@ -101,6 +101,35 @@
       "updated_at": "2025-12-22T15:20:13.775363",
       "final_price": 43.47,
       "final_profit_rate": 2.02
+    },
+    {
+      "id": "3f4041ef-3372-4fbc-8467-8cabc528c16a",
+      "stock_code": "sz000592",
+      "stock_name": "平潭发展",
+      "start_date": "2025-11-27",
+      "end_date": "2025-12-24",
+      "current_day": 1,
+      "total_days": 20,
+      "initial_capital": 1000000.0,
+      "current_capital": 500800.0,
+      "position": 51200,
+      "cost_price": 9.75,
+      "status": "paused",
+      "trades": [
+        {
+          "day": 0,
+          "date": "2025-11-27",
+          "type": "buy",
+          "price": 9.75,
+          "quantity": 51200,
+          "reason": "回调结束，快要启动，建仓建仓",
+          "capital_after": 500800.0,
+          "position_after": 51200
+        }
+      ],
+      "kline_start_idx": 29,
+      "created_at": "2025-12-25T18:10:21.914937",
+      "updated_at": "2025-12-25T18:12:18.130334"
     }
   ]
 }
