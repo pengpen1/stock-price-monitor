@@ -1,20 +1,39 @@
 """
-实盘模拟模块
-- 模拟会话管理
-- 历史数据获取
-- AI 评分分析
+实盘模拟管理器
+
+本文件负责实盘模拟交易功能：
+1. 模拟会话管理（创建、暂停、继续、放弃、删除）
+2. 模拟交易执行（买入、卖出、跳过）
+3. 收益计算（收益率、胜率、最大回撤）
+4. AI 评分分析数据格式化
+
+模拟规则：
+- 使用历史 K 线数据进行模拟
+- 支持 7-50 个交易日的模拟周期
+- 模拟结束时自动清仓计算收益
 """
+
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
 
 
 class SimulationManager:
-    """实盘模拟管理器"""
+    """
+    实盘模拟管理器
+    
+    管理模拟交易会话，支持历史数据回测
+    """
     
     def __init__(self, data_dir: Path):
+        """
+        初始化模拟管理器
+        
+        Args:
+            data_dir: 数据存储目录
+        """
         self.data_dir = data_dir
         self.simulations_file = data_dir / "simulations.json"
         self.sessions: List[Dict] = []
@@ -40,27 +59,38 @@ class SimulationManager:
         except Exception as e:
             print(f"保存模拟数据失败: {e}")
     
-    def create_session(self, stock_code: str, stock_name: str, total_days: int,
-                       initial_capital: float, kline_data: List[Dict]) -> Dict:
+    # ========== 会话管理 ==========
+    
+    def create_session(
+        self,
+        stock_code: str,
+        stock_name: str,
+        total_days: int,
+        initial_capital: float,
+        kline_data: List[Dict]
+    ) -> Dict:
         """
         创建模拟会话
+        
         Args:
             stock_code: 股票代码
             stock_name: 股票名称
-            total_days: 模拟天数
+            total_days: 模拟天数（7-50）
             initial_capital: 初始资金
-            kline_data: K线数据（用于确定日期范围）
+            kline_data: K线数据
+            
+        Returns:
+            {"status": "success/error", "session": {...}, "message": "..."}
         """
         if len(kline_data) < total_days + 1:
             return {"status": "error", "message": f"历史数据不足，需要至少 {total_days + 1} 天数据"}
         
         # 从倒数第二天开始（留最后一天作为结算参考）
-        # 模拟范围：kline_data[-(total_days+1)] 到 kline_data[-2]
         start_idx = len(kline_data) - total_days - 1
         end_idx = len(kline_data) - 1
         
         start_date = kline_data[start_idx]['date']
-        end_date = kline_data[end_idx - 1]['date']  # 最后一个交易日
+        end_date = kline_data[end_idx - 1]['date']
         
         session = {
             "id": str(uuid.uuid4()),
@@ -74,9 +104,9 @@ class SimulationManager:
             "current_capital": initial_capital,
             "position": 0,
             "cost_price": 0,
-            "status": "running",
+            "status": "running",  # running/paused/completed/abandoned
             "trades": [],
-            "kline_start_idx": start_idx,  # K线起始索引
+            "kline_start_idx": start_idx,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
@@ -87,20 +117,44 @@ class SimulationManager:
         return {"status": "success", "session": session}
     
     def get_session(self, session_id: str) -> Dict:
-        """获取模拟会话"""
+        """
+        获取模拟会话
+        
+        Args:
+            session_id: 会话 ID
+            
+        Returns:
+            {"status": "success/error", "session": {...}, "message": "..."}
+        """
         for session in self.sessions:
             if session["id"] == session_id:
                 return {"status": "success", "session": session}
         return {"status": "error", "message": "会话不存在"}
     
-    def get_sessions(self, stock_code: str = None, status: str = None, limit: int = 50) -> Dict:
-        """获取模拟会话列表"""
+    def get_sessions(
+        self,
+        stock_code: str = None,
+        status: str = None,
+        limit: int = 50
+    ) -> Dict:
+        """
+        获取模拟会话列表
+        
+        Args:
+            stock_code: 股票代码（可选）
+            status: 状态筛选（可选）
+            limit: 返回数量限制
+            
+        Returns:
+            {"status": "success", "sessions": [...], "total": 数量}
+        """
         sessions = self.sessions
         
         if stock_code:
-            sessions = [s for s in sessions if s["stock_code"] == stock_code
-                       or s["stock_code"].endswith(stock_code)
-                       or stock_code.endswith(s["stock_code"])]
+            sessions = [s for s in sessions if 
+                       s["stock_code"] == stock_code or
+                       s["stock_code"].endswith(stock_code) or
+                       stock_code.endswith(s["stock_code"])]
         
         if status:
             sessions = [s for s in sessions if s["status"] == status]
@@ -110,17 +164,73 @@ class SimulationManager:
         
         return {"status": "success", "sessions": sessions[:limit], "total": len(sessions)}
     
-    def execute_trade(self, session_id: str, trade_type: str, price: float,
-                      quantity: int, reason: str, current_date: str) -> Dict:
+    def pause_session(self, session_id: str) -> Dict:
+        """暂停会话"""
+        for session in self.sessions:
+            if session["id"] == session_id:
+                if session["status"] == "running":
+                    session["status"] = "paused"
+                    session["updated_at"] = datetime.now().isoformat()
+                    self._save_data()
+                    return {"status": "success", "session": session}
+                return {"status": "error", "message": "会话状态不允许暂停"}
+        return {"status": "error", "message": "会话不存在"}
+    
+    def resume_session(self, session_id: str) -> Dict:
+        """继续会话"""
+        for session in self.sessions:
+            if session["id"] == session_id:
+                if session["status"] == "paused":
+                    session["status"] = "running"
+                    session["updated_at"] = datetime.now().isoformat()
+                    self._save_data()
+                    return {"status": "success", "session": session}
+                return {"status": "error", "message": "会话状态不允许继续"}
+        return {"status": "error", "message": "会话不存在"}
+    
+    def abandon_session(self, session_id: str) -> Dict:
+        """放弃会话"""
+        for session in self.sessions:
+            if session["id"] == session_id:
+                session["status"] = "abandoned"
+                session["updated_at"] = datetime.now().isoformat()
+                self._save_data()
+                return {"status": "success", "session": session}
+        return {"status": "error", "message": "会话不存在"}
+    
+    def delete_session(self, session_id: str) -> Dict:
+        """删除会话"""
+        for i, session in enumerate(self.sessions):
+            if session["id"] == session_id:
+                deleted = self.sessions.pop(i)
+                self._save_data()
+                return {"status": "success", "deleted": deleted}
+        return {"status": "error", "message": "会话不存在"}
+    
+    # ========== 交易执行 ==========
+    
+    def execute_trade(
+        self,
+        session_id: str,
+        trade_type: str,
+        price: float,
+        quantity: int,
+        reason: str,
+        current_date: str
+    ) -> Dict:
         """
-        执行交易
+        执行模拟交易
+        
         Args:
-            session_id: 会话ID
+            session_id: 会话 ID
             trade_type: 交易类型 buy/sell/skip
             price: 成交价格
             quantity: 股数（100的倍数）
             reason: 交易理由
             current_date: 当前日期
+            
+        Returns:
+            {"status": "success/error", "session": {...}, "trade": {...}, "message": "..."}
         """
         session = None
         for s in self.sessions:
@@ -134,7 +244,7 @@ class SimulationManager:
         if session["status"] != "running":
             return {"status": "error", "message": "会话已结束或暂停"}
         
-        # 计算交易
+        # 执行交易
         if trade_type == "buy":
             cost = price * quantity
             if cost > session["current_capital"]:
@@ -177,57 +287,25 @@ class SimulationManager:
         # 检查是否结束
         if session["current_day"] >= session["total_days"]:
             session["status"] = "completed"
-            # 保存最终价格用于计算收益（由API层传入）
             session["final_price"] = price
         
         self._save_data()
         
         return {"status": "success", "session": session, "trade": trade}
     
-    def pause_session(self, session_id: str) -> Dict:
-        """暂停会话"""
-        for session in self.sessions:
-            if session["id"] == session_id:
-                if session["status"] == "running":
-                    session["status"] = "paused"
-                    session["updated_at"] = datetime.now().isoformat()
-                    self._save_data()
-                    return {"status": "success", "session": session}
-                return {"status": "error", "message": "会话状态不允许暂停"}
-        return {"status": "error", "message": "会话不存在"}
-    
-    def resume_session(self, session_id: str) -> Dict:
-        """继续会话"""
-        for session in self.sessions:
-            if session["id"] == session_id:
-                if session["status"] == "paused":
-                    session["status"] = "running"
-                    session["updated_at"] = datetime.now().isoformat()
-                    self._save_data()
-                    return {"status": "success", "session": session}
-                return {"status": "error", "message": "会话状态不允许继续"}
-        return {"status": "error", "message": "会话不存在"}
-    
-    def abandon_session(self, session_id: str) -> Dict:
-        """放弃会话"""
-        for session in self.sessions:
-            if session["id"] == session_id:
-                session["status"] = "abandoned"
-                session["updated_at"] = datetime.now().isoformat()
-                self._save_data()
-                return {"status": "success", "session": session}
-        return {"status": "error", "message": "会话不存在"}
-    
     def complete_session(self, session_id: str, final_price: float) -> Dict:
         """
         完成模拟会话，自动清仓并计算最终收益
+        
         Args:
-            session_id: 会话ID
-            final_price: 最终价格（用于计算持仓市值和自动清仓）
+            session_id: 会话 ID
+            final_price: 最终价格
+            
+        Returns:
+            {"status": "success/error", "session": {...}, "message": "..."}
         """
         for session in self.sessions:
             if session["id"] == session_id:
-                # 保存最终价格
                 session["final_price"] = final_price
                 
                 # 如果还有持仓，自动清仓
@@ -245,7 +323,7 @@ class SimulationManager:
                         "reason": "模拟结束自动清仓",
                         "capital_after": session["current_capital"],
                         "position_after": 0,
-                        "auto": True  # 标记为自动交易
+                        "auto": True
                     }
                     session["trades"].append(auto_trade)
                     session["position"] = 0
@@ -259,23 +337,21 @@ class SimulationManager:
                 session["updated_at"] = datetime.now().isoformat()
                 self._save_data()
                 return {"status": "success", "session": session}
+        
         return {"status": "error", "message": "会话不存在"}
     
-    def delete_session(self, session_id: str) -> Dict:
-        """删除会话"""
-        for i, session in enumerate(self.sessions):
-            if session["id"] == session_id:
-                deleted = self.sessions.pop(i)
-                self._save_data()
-                return {"status": "success", "deleted": deleted}
-        return {"status": "error", "message": "会话不存在"}
+    # ========== 收益计算 ==========
     
     def calculate_result(self, session: Dict, final_price: float) -> Dict:
         """
         计算模拟结果
+        
         Args:
             session: 会话数据
-            final_price: 最终价格（用于计算持仓市值）
+            final_price: 最终价格
+            
+        Returns:
+            结果统计
         """
         # 计算最终资产
         position_value = session["position"] * final_price
@@ -285,13 +361,12 @@ class SimulationManager:
         # 收益率
         profit_rate = (final_capital - initial_capital) / initial_capital * 100
         
-        # 计算胜率和最大回撤
+        # 计算胜率
         trades = [t for t in session["trades"] if t["type"] != "skip"]
         win_count = 0
         total_trades = 0
-        
-        # 简单计算：卖出时盈利算赢
         buy_price = 0
+        
         for trade in session["trades"]:
             if trade["type"] == "buy":
                 buy_price = trade["price"]
@@ -322,10 +397,24 @@ class SimulationManager:
             "position_value": round(position_value, 2)
         }
     
-    def format_for_ai_analysis(self, session: Dict, kline_data: List[Dict], 
-                               result: Dict) -> str:
+    # ========== AI 分析数据格式化 ==========
+    
+    def format_for_ai_analysis(
+        self,
+        session: Dict,
+        kline_data: List[Dict],
+        result: Dict
+    ) -> str:
         """
         格式化数据用于 AI 分析
+        
+        Args:
+            session: 会话数据
+            kline_data: K线数据
+            result: 计算结果
+            
+        Returns:
+            格式化的提示词
         """
         # 获取模拟期间的K线数据
         start_idx = session.get("kline_start_idx", 0)

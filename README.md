@@ -4,7 +4,7 @@
 
 一个跨平台的桌面股票监控应用，支持实时行情、AI 智能分析、预警推送和桌面悬浮窗。
 
-![screenshot](docs/screenshot.png)
+![screenshot](docs/assets/screenshot.png)
 
 ## 功能特性
 
@@ -22,7 +22,7 @@
 - 技术指标（换手率、量比、振幅、均线）
 - 基本面数据（PE、PB、市值、行业）
 
-![detail](docs/detail.png)
+![detail](docs/assets/detail.png)
 
 ### AI 智能分析
 
@@ -32,7 +32,7 @@
 - 趋势预测：AI 预测未来 5 个交易日价格走势
 - 结构化输出：自动提取看涨/谨慎/看跌信号
 
-![prediction](docs/prediction.png)
+![prediction](docs/assets/prediction.png)
 
 ### 复盘记录
 
@@ -41,7 +41,7 @@
 - AI 分析历史：查看历史分析记录和信号
 - 自动计算持仓成本和数量
 
-![history](docs/history.png)
+![history](docs/assets/history.png)
 
 ### 实盘模拟
 
