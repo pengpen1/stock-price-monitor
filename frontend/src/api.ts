@@ -1,3 +1,8 @@
+/**
+ * API 接口层
+ * 封装所有与后端的 HTTP 请求
+ * 包括：股票数据、交易记录、AI分析、模拟交易、笔记等
+ */
 import axios from 'axios';
 
 const api = axios.create({

@@ -1,3 +1,7 @@
+/**
+ * Vite 配置文件
+ * 配置 Vue、Electron、Tailwind 等插件，以及路径别名
+ */
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron'
@@ -41,4 +45,9 @@ export default defineConfig({
     ]),
     renderer(),
   ],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
 })

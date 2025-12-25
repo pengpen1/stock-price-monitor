@@ -24,10 +24,12 @@
     "axios": "^1.13.2",
     "echarts": "^6.0.0",
     "marked": "^17.0.1",
+    "pinia": "^3.0.4",
     "vue": "^3.5.24",
     "vue-echarts": "^8.0.1",
     "vue-i18n": "^9.14.5",
-    "vue-mdr": "^0.0.14"
+    "vue-mdr": "^0.0.14",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
@@ -37,14 +39,14 @@
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "electron": "^39.2.4",
+    "electron-builder": "^25.1.8",
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6",
     "vue-tsc": "^3.1.4",
-    "wait-on": "^9.0.3",
-    "electron-builder": "^25.1.8"
+    "wait-on": "^9.0.3"
   },
   "build": {
     "appId": "com.stockmonitor.app",
@@ -60,7 +62,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/stock.ico",
@@ -83,7 +87,9 @@
       "shortcutName": "股票监控助手"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "public/stock.png",
       "extraResources": [
         {
@@ -97,7 +103,9 @@
       ]
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "public/stock.png",
       "category": "Utility",
       "extraResources": [
