@@ -61,7 +61,7 @@ class AIService:
         return get_provider_list()
     
     @staticmethod
-    def get_models(provider: str, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(provider: str, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """
         获取指定提供商的可用模型列表
         
@@ -92,7 +92,7 @@ class AIService:
                 return config.default_models or []
             
             # 调用协议获取模型列表
-            return protocol.get_models(config, api_key, proxy)
+            return protocol.get_models(config, api_key, proxy, base_url)
             
         except Exception as e:
             logger.error(f"获取模型列表失败: {e}")
@@ -106,6 +106,7 @@ class AIService:
         prompt: str,
         proxy: str = None,
         max_retries: int = 3,
+        base_url: str = None,
     ) -> str:
         """
         调用 LLM API
@@ -141,7 +142,7 @@ class AIService:
         last_error = None
         for attempt in range(max_retries):
             try:
-                return protocol.chat(config, api_key, model, system_prompt, prompt, proxy)
+                return protocol.chat(config, api_key, model, system_prompt, prompt, proxy, base_url)
                 
             except requests.exceptions.HTTPError as e:
                 last_error = e
@@ -187,6 +188,7 @@ class AIService:
         is_precise: bool = False,
         current_price: float = 0,
         future_dates: List[str] = None,
+        base_url: str = None,
     ) -> Dict[str, Any]:
         """
         调用 LLM 并返回结构化结果
@@ -258,7 +260,7 @@ signal 取值说明：
 """
         
         # 调用 LLM
-        result = AIService.call_llm(provider, api_key, model, structured_prompt, proxy, max_retries)
+        result = AIService.call_llm(provider, api_key, model, structured_prompt, proxy, max_retries, base_url)
         
         # 检查是否失败
         if result.startswith("分析失败"):

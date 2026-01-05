@@ -11,6 +11,7 @@ class ModelsRequest(BaseModel):
     provider: str
     api_key: str
     proxy: Optional[str] = None
+    base_url: Optional[str] = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -21,4 +22,5 @@ class AnalyzeRequest(BaseModel):
     api_key: str
     model: str
     proxy: Optional[str] = None
+    base_url: Optional[str] = None
     inputs: Optional[Dict] = {}

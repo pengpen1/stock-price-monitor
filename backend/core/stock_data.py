@@ -303,7 +303,8 @@ class StockDataFetcher:
             market = "1" if code.startswith("sh") else "0"
             stock_code = code[2:]
             
-            url = f"https://push2.eastmoney.com/api/qt/stock/fflow/kline/get?secid={market}.{stock_code}&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56&klt=1&lmt=0"
+            # 使用 klt=101 获取日线资金流向，避免 klt=1 分时数据累加导致数值过大
+            url = f"https://push2.eastmoney.com/api/qt/stock/fflow/kline/get?secid={market}.{stock_code}&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56&klt=101&lmt=30"
             
             resp = requests.get(
                 url, 
@@ -366,7 +367,8 @@ class StockDataFetcher:
         
         try:
             # 使用东方财富接口获取详细数据
-            url = f"https://push2.eastmoney.com/api/qt/stock/get?secid={market}.{stock_code}&fields=f43,f44,f45,f46,f47,f48,f50,f51,f52,f55,f57,f58,f60,f61,f62,f84,f85,f100,f116,f117,f162,f167,f168,f171"
+            # f162: PE(动), f164: PE(TTM), f167: PB, f168: 换手率
+            url = f"https://push2.eastmoney.com/api/qt/stock/get?secid={market}.{stock_code}&fields=f43,f44,f45,f46,f47,f48,f50,f51,f52,f55,f57,f58,f60,f61,f62,f162,f164,f167,f168,f84,f85,f100,f116,f117,f162,f167,f168,f171"
             
             resp = requests.get(
                 url, 
@@ -378,10 +380,12 @@ class StockDataFetcher:
             
             if data.get("data"):
                 d = data["data"]
-                result["turnover_rate"] = d.get("f168")
+                result["turnover_rate"] = d.get("f168") / 100 if d.get("f168") else None
                 result["volume_ratio"] = d.get("f50") / 100 if d.get("f50") else None
                 result["amplitude"] = d.get("f171") / 100 if d.get("f171") else None
-                result["pe_ratio"] = d.get("f162") / 100 if d.get("f162") else None
+                # 优先使用 PE(TTM) f164，如果没有则使用 PE(动) f162
+                pe = d.get("f164") if d.get("f164") != "-" else d.get("f162")
+                result["pe_ratio"] = pe / 100 if pe else None
                 result["pb_ratio"] = d.get("f167") / 100 if d.get("f167") else None
                 result["total_mv"] = d.get("f116")
                 result["circ_mv"] = d.get("f117")

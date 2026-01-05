@@ -23,7 +23,8 @@ function startBackend() {
     return;
   }
   const backendPath = path.join(process.resourcesPath, "backend");
-  const backendExe = path.join(backendPath, "stock-monitor-backend.exe");
+  const binaryName = process.platform === "win32" ? "stock-monitor-backend.exe" : "stock-monitor-backend";
+  const backendExe = path.join(backendPath, binaryName);
   console.log("启动后端服务:", backendExe);
   console.log("工作目录:", backendPath);
   backendProcess = spawn(backendExe, [], {
@@ -304,6 +305,15 @@ ipcMain.on("close-float-window", () => {
     console.log("悬浮窗已关闭");
   }
 });
+ipcMain.on("show-main-window", () => {
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+  } else {
+    createWindow();
+  }
+});
 ipcMain.on("show-notification", (_event, data) => {
   if (Notification.isSupported()) {
     const notification = new Notification({
@@ -338,7 +348,11 @@ app.on("before-quit", () => {
   stopBackend();
 });
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+  } else if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });

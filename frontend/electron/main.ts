@@ -43,7 +43,8 @@ function startBackend() {
   
   // 打包后的后端 exe 路径
   const backendPath = path.join(process.resourcesPath, 'backend')
-  const backendExe = path.join(backendPath, 'stock-monitor-backend.exe')
+  const binaryName = process.platform === 'win32' ? 'stock-monitor-backend.exe' : 'stock-monitor-backend'
+  const backendExe = path.join(backendPath, binaryName)
   
   console.log('启动后端服务:', backendExe)
   console.log('工作目录:', backendPath)
@@ -421,6 +422,17 @@ ipcMain.on('close-float-window', () => {
   }
 })
 
+// IPC: 显示主窗口
+ipcMain.on('show-main-window', () => {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    if (!win.isVisible()) win.show()
+    win.focus()
+  } else {
+    createWindow()
+  }
+})
+
 // IPC: 发送系统通知
 ipcMain.on('show-notification', (_event, data: { title: string; body: string }) => {
   if (Notification.isSupported()) {
@@ -464,7 +476,11 @@ app.on('before-quit', () => {
 })
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    if (!win.isVisible()) win.show()
+    win.focus()
+  } else if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }
 })

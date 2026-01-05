@@ -35,7 +35,7 @@ def get_ai_providers():
 def get_ai_models(req: ModelsRequest):
     """获取指定提供商的可用模型列表"""
     try:
-        models = AIService.get_models(req.provider, req.api_key, req.proxy)
+        models = AIService.get_models(req.provider, req.api_key, req.proxy, req.base_url)
         return {"status": "success", "models": models}
     except Exception as e:
         return {"status": "error", "message": str(e), "models": []}
@@ -116,7 +116,8 @@ def analyze_stock(req: AnalyzeRequest):
         max_retries=3,
         is_precise=is_precise,
         current_price=current_price,
-        future_dates=future_dates
+        future_dates=future_dates,
+        base_url=req.base_url
     )
     
     result = llm_result["result"]

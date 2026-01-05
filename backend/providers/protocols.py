@@ -128,7 +128,7 @@ class BaseProtocol(ABC):
             return response.json()
     
     @abstractmethod
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """
         获取可用模型列表
         
@@ -136,6 +136,7 @@ class BaseProtocol(ABC):
             config: 提供商配置
             api_key: API Key
             proxy: 代理地址
+            base_url: 自定义 API 地址
             
         Returns:
             模型列表 [{"id": "model-id", "name": "Model Name"}, ...]
@@ -151,6 +152,7 @@ class BaseProtocol(ABC):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """
         调用模型进行对话
@@ -181,10 +183,11 @@ class OpenAICompatibleProtocol(BaseProtocol):
     - Grok
     """
     
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """获取 OpenAI 兼容格式的模型列表"""
         try:
-            url = f"{config.base_url}{config.models_endpoint}"
+            base = base_url or config.base_url
+            url = f"{base}{config.models_endpoint}"
             headers = {"Authorization": f"Bearer {api_key}"}
             
             data = self._make_request("GET", url, proxy=proxy, headers=headers, timeout=30)
@@ -213,9 +216,11 @@ class OpenAICompatibleProtocol(BaseProtocol):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """调用 OpenAI 兼容格式的聊天接口"""
-        url = f"{config.base_url}/v1/chat/completions"
+        base = base_url or config.base_url
+        url = f"{base}/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -237,7 +242,7 @@ class GeminiProtocol(BaseProtocol):
     Google Gemini 原生协议
     """
     
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """获取 Gemini 模型列表"""
         try:
             url = f"{config.base_url}/v1beta/models?key={api_key}"
@@ -267,6 +272,7 @@ class GeminiProtocol(BaseProtocol):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """调用 Gemini 聊天接口"""
         if not model:
@@ -292,7 +298,7 @@ class ClaudeProtocol(BaseProtocol):
     Anthropic Claude 原生协议
     """
     
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """Claude 没有公开的模型列表 API，返回默认模型"""
         return config.default_models or []
     
@@ -304,6 +310,7 @@ class ClaudeProtocol(BaseProtocol):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """调用 Claude 聊天接口"""
         url = f"{config.base_url}/v1/messages"
@@ -332,7 +339,7 @@ class DoubaoProtocol(BaseProtocol):
     - 认证方式略有不同
     """
     
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """
         获取豆包模型列表
         
@@ -350,6 +357,7 @@ class DoubaoProtocol(BaseProtocol):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """
         调用豆包聊天接口
@@ -419,7 +427,7 @@ class GLMProtocol(BaseProtocol):
             logger.warning(f"生成 JWT Token 失败: {e}")
             return api_key
     
-    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None) -> List[Dict]:
+    def get_models(self, config: ProviderConfig, api_key: str, proxy: str = None, base_url: str = None) -> List[Dict]:
         """获取 GLM 模型列表"""
         # GLM 没有公开的模型列表 API，返回默认模型
         return config.default_models or []
@@ -432,6 +440,7 @@ class GLMProtocol(BaseProtocol):
         system_prompt: str,
         user_prompt: str,
         proxy: str = None,
+        base_url: str = None,
     ) -> str:
         """调用 GLM 聊天接口"""
         url = f"{config.base_url}/chat/completions"

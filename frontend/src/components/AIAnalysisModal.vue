@@ -92,31 +92,29 @@
                 <div v-else-if="step === 'result'" class="space-y-4">
                     <!-- Prompt 消息流展示 -->
                     <div v-if="promptText" class="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
-                        <div 
-                            @click="showPrompt = !showPrompt"
-                            class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-700/30 transition-colors"
-                        >
+                        <div @click="showPrompt = !showPrompt"
+                            class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-700/30 transition-colors">
                             <div class="flex items-center gap-2">
                                 <span class="text-gray-400 text-sm">📝 prompt</span>
                                 <span class="text-xs text-gray-500">({{ promptText.length }} 字符)</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button 
-                                    @click.stop="copyPrompt"
-                                    class="px-2 py-1 text-xs text-blue-400 border border-blue-500/50 rounded hover:bg-blue-500/20 transition-colors"
-                                >
+                                <button @click.stop="copyPrompt"
+                                    class="px-2 py-1 text-xs text-blue-400 border border-blue-500/50 rounded hover:bg-blue-500/20 transition-colors">
                                     复制
                                 </button>
                                 <span class="text-gray-500 text-sm">{{ showPrompt ? '▼' : '▶' }}</span>
                             </div>
                         </div>
                         <div v-if="showPrompt" class="border-t border-gray-700/50">
-                            <pre class="p-4 text-xs text-gray-300 overflow-auto max-h-64 whitespace-pre-wrap font-mono">{{ promptText }}</pre>
+                            <pre
+                                class="p-4 text-xs text-gray-300 overflow-auto max-h-64 whitespace-pre-wrap font-mono">{{ promptText }}</pre>
                         </div>
                     </div>
 
                     <!-- 预测趋势图（仅精准分析） -->
-                    <div v-if="type === 'precise' && prediction.length > 0" class="bg-gray-800/50 rounded-lg border border-gray-700/50 p-4 mb-4">
+                    <div v-if="type === 'precise' && prediction.length > 0"
+                        class="bg-gray-800/50 rounded-lg border border-gray-700/50 p-4 mb-4">
                         <div class="flex items-center justify-between mb-3">
                             <h4 class="text-sm font-medium text-gray-300">未来5日趋势预测</h4>
                             <span class="text-xs text-gray-500">基于AI分析，仅供参考</span>
@@ -171,7 +169,7 @@ const inputs = ref({
 const result = ref('');
 const promptText = ref(''); // 保存发送给大模型的 prompt
 const showPrompt = ref(false); // 是否展开 prompt
-const config = ref<{ provider: string, apiKey: string, model: string, proxy?: string } | null>(null);
+const config = ref<{ provider: string, apiKey: string, model: string, proxy?: string, baseUrl?: string } | null>(null);
 const prediction = ref<PredictionItem[]>([]); // 预测数据
 const currentPrice = ref(0); // 当前价格
 const predictionChartRef = ref<HTMLElement | null>(null); // 图表容器
@@ -232,7 +230,8 @@ const loadConfig = async () => {
                 provider: res.settings.ai_provider || 'gemini',
                 apiKey: res.settings.ai_api_key || '',
                 model: res.settings.ai_model || '',
-                proxy: res.settings.ai_proxy || ''
+                proxy: res.settings.ai_proxy || '',
+                baseUrl: res.settings.ai_base_url || ''
             };
         } else {
             config.value = null;
@@ -250,7 +249,7 @@ const close = () => {
 const startAnalysis = async () => {
     step.value = 'loading';
     prediction.value = [];
-    
+
     try {
         if (!config.value) return;
 
@@ -269,7 +268,8 @@ const startAnalysis = async () => {
             config.value.apiKey,
             config.value.model,
             props.type === 'precise' ? analysisInputs : {},
-            config.value.proxy
+            config.value.proxy,
+            config.value.baseUrl
         );
 
         if (res.status === 'success') {
@@ -278,7 +278,7 @@ const startAnalysis = async () => {
             prediction.value = res.prediction || [];
             currentPrice.value = res.current_price || 0;
             step.value = 'result';
-            
+
             // 渲染预测图表
             if (props.type === 'precise' && prediction.value.length > 0) {
                 await nextTick();
@@ -301,30 +301,30 @@ const startAnalysis = async () => {
 // 渲染预测趋势图
 const renderPredictionChart = () => {
     if (!predictionChartRef.value || prediction.value.length === 0) return;
-    
+
     // 销毁旧图表
     if (predictionChart) {
         predictionChart.dispose();
     }
-    
+
     predictionChart = echarts.init(predictionChartRef.value);
-    
+
     // 构建数据：当前价格 + 预测价格
     const dates = ['今日', ...prediction.value.map(p => p.date.slice(5))]; // MM-DD 格式
     const prices = [currentPrice.value, ...prediction.value.map(p => p.price)];
     const changes = [0, ...prediction.value.map(p => p.change_pct)];
-    
+
     // 计算价格范围
     const minPrice = Math.min(...prices) * 0.98;
     const maxPrice = Math.max(...prices) * 1.02;
-    
+
     // 判断整体趋势
     const lastPrice = prices[prices.length - 1];
     const isUp = lastPrice > currentPrice.value;
     const lineColor = isUp ? '#22c55e' : '#ef4444';
     const areaColorStart = isUp ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
     const areaColorEnd = isUp ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)';
-    
+
     const option: echarts.EChartsOption = {
         backgroundColor: 'transparent',
         grid: {
@@ -344,16 +344,16 @@ const renderPredictionChart = () => {
                 const change = changes[idx];
                 const changeStr = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
                 const changeColor = change >= 0 ? '#22c55e' : '#ef4444';
-                
+
                 if (idx === 0) {
                     return `<div style="font-size:12px">
                         <div style="margin-bottom:4px;color:#94a3b8">当前价格</div>
                         <div style="font-size:16px;font-weight:bold">¥${price.toFixed(2)}</div>
                     </div>`;
                 }
-                
+
                 return `<div style="font-size:12px">
-                    <div style="margin-bottom:4px;color:#94a3b8">${prediction.value[idx-1].date}</div>
+                    <div style="margin-bottom:4px;color:#94a3b8">${prediction.value[idx - 1].date}</div>
                     <div style="font-size:16px;font-weight:bold">¥${price.toFixed(2)}</div>
                     <div style="color:${changeColor};margin-top:4px">预估涨跌: ${changeStr}</div>
                 </div>`;
@@ -371,8 +371,8 @@ const renderPredictionChart = () => {
             min: minPrice,
             max: maxPrice,
             axisLine: { show: false },
-            axisLabel: { 
-                color: '#94a3b8', 
+            axisLabel: {
+                color: '#94a3b8',
                 fontSize: 11,
                 formatter: (v: number) => `¥${v.toFixed(2)}`
             },
@@ -386,7 +386,7 @@ const renderPredictionChart = () => {
                 symbol: 'circle',
                 symbolSize: 8,
                 lineStyle: { color: lineColor, width: 3 },
-                itemStyle: { 
+                itemStyle: {
                     color: lineColor,
                     borderColor: '#1e293b',
                     borderWidth: 2
@@ -406,7 +406,7 @@ const renderPredictionChart = () => {
             }
         ]
     };
-    
+
     predictionChart.setOption(option);
 };
 

@@ -133,11 +133,12 @@ export const getMarketStatsHistory = async (days: number = 30) => {
 };
 
 // 获取 AI 模型列表
-export const getAIModels = async (provider: string, apiKey: string, proxy?: string) => {
+export const getAIModels = async (provider: string, apiKey: string, proxy?: string, baseUrl?: string) => {
   const response = await api.post('/ai/models', {
     provider,
     api_key: apiKey,
-    proxy: proxy || null
+    proxy: proxy || null,
+    base_url: baseUrl || null
   });
   return response.data;
 };
@@ -150,7 +151,8 @@ export const analyzeStock = async (
   apiKey: string,
   model: string,
   inputs: Record<string, any> = {},
-  proxy?: string
+  proxy?: string,
+  baseUrl?: string
 ) => {
   const response = await api.post('/analyze', {
     code,
@@ -159,6 +161,7 @@ export const analyzeStock = async (
     api_key: apiKey,
     model,
     proxy: proxy || null,
+    base_url: baseUrl || null,
     inputs
   });
   return response.data;

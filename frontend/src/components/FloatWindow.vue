@@ -1,22 +1,14 @@
 <template>
-  <div 
-    class="float-container"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
-  >
+  <div class="float-container" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave" @dblclick="showMainWindow">
     <!-- 标题栏（可拖拽区域） -->
     <div class="title-bar">
       <span class="title">stock price monitor</span>
-      <button class="close-btn" @click="handleClose">×</button>
+      <button class="close-btn" @click.stop="handleClose">×</button>
     </div>
-    
+
     <!-- 股票列表 -->
     <div class="stock-list">
-      <div 
-        v-for="stock in displayStocks" 
-        :key="stock.code"
-        class="stock-item"
-      >
+      <div v-for="stock in displayStocks" :key="stock.code" class="stock-item">
         <span class="stock-name">{{ stock.name }}</span>
         <span class="stock-price" :class="getPriceClass(stock.change_percent)">
           {{ stock.price }}
@@ -25,7 +17,7 @@
           {{ getChangeIcon(stock.change_percent) }}{{ stock.change_percent }}%
         </span>
       </div>
-      
+
       <!-- 空状态 -->
       <div v-if="displayStocks.length === 0" class="empty-state">
         暂无监控股票
@@ -78,6 +70,11 @@ const handleMouseLeave = () => {
   isHovered.value = false
 }
 
+// 显示主窗口
+const showMainWindow = () => {
+  (window as any).ipcRenderer?.send('show-main-window')
+}
+
 // 关闭悬浮窗
 const handleClose = () => {
   console.log('点击关闭按钮')
@@ -99,13 +96,13 @@ const fetchData = async () => {
   try {
     const res = await getStocks()
     stockData.value = Object.values(res.data) as StockData[]
-    
+
     // 同时更新托盘提示
     if (stockData.value.length > 0) {
       const summary = stockData.value.slice(0, 3)
         .map(s => `${s.name}: ${s.price} (${s.change_percent}%)`)
         .join('\n')
-      ;(window as any).ipcRenderer?.send('update-tray', summary)
+        ; (window as any).ipcRenderer?.send('update-tray', summary)
     }
   } catch (error) {
     console.error('获取股票数据失败:', error)
@@ -141,7 +138,8 @@ onUnmounted(() => {
   align-items: center;
   padding: 6px 10px;
   background: rgba(50, 50, 50, 0.9);
-  -webkit-app-region: drag;  /* 允许拖拽 */
+  -webkit-app-region: drag;
+  /* 允许拖拽 */
   cursor: move;
 }
 
@@ -163,7 +161,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: no-drag;  /* 关闭按钮不可拖拽 */
+  -webkit-app-region: no-drag;
+  /* 关闭按钮不可拖拽 */
   transition: all 0.2s;
 }
 
