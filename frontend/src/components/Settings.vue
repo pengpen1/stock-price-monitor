@@ -250,6 +250,10 @@ const messageClass = computed(() => {
     : 'bg-red-50 text-red-600 border border-red-200'
 })
 
+// 保存各提供商的配置缓存
+const providerConfigs = ref<Record<string, any>>({})
+const previousProvider = ref('')
+
 // 加载设置
 const loadSettings = async () => {
   try {
@@ -263,6 +267,12 @@ const loadSettings = async () => {
         pushplus_token: s.pushplus_token ?? '',
         dingtalk_webhook: s.dingtalk_webhook ?? '',
       }
+
+      // 加载提供商配置缓存
+      if (s.provider_configs) {
+        providerConfigs.value = s.provider_configs
+      }
+
       // AI 配置（从后端加载）
       aiConfig.value = {
         provider: s.ai_provider ?? 'gemini',
@@ -271,11 +281,20 @@ const loadSettings = async () => {
         proxy: s.ai_proxy ?? '',
         baseUrl: s.ai_base_url ?? '',
       }
+
+      // 初始化当前提供商
+      previousProvider.value = aiConfig.value.provider
+
+      // 确保当前配置也保存到缓存中（如果是第一次加载）
+      if (!providerConfigs.value[aiConfig.value.provider]) {
+        saveCurrentToConfig(aiConfig.value.provider)
+      }
     }
   } catch (e) {
     console.error('加载设置失败:', e)
   }
 }
+
 
 // 保存设置
 const saveSettings = async () => {
@@ -284,6 +303,11 @@ const saveSettings = async () => {
 
   try {
     // 合并基础设置和 AI 配置，一起保存到后端
+    saveCurrentToConfig(aiConfig.value.provider) // 保存当前编辑的状态到缓存
+
+    // 确保当前使用的配置也是最新的
+    const currentConfig = providerConfigs.value[aiConfig.value.provider] || {}
+
     const allSettings = {
       ...settings.value,
       ai_provider: aiConfig.value.provider,
@@ -291,6 +315,7 @@ const saveSettings = async () => {
       ai_model: aiConfig.value.model,
       ai_proxy: aiConfig.value.proxy,
       ai_base_url: aiConfig.value.baseUrl,
+      provider_configs: providerConfigs.value // 保存所有提供商的配置
     }
 
     const res = await updateSettings(allSettings)
@@ -329,10 +354,66 @@ const resetSettings = () => {
   modelList.value = []
 }
 
-// 切换提供商时清空模型列表
+// 保存当前配置到缓存
+const saveCurrentToConfig = (provider: string) => {
+  if (!provider) return
+  providerConfigs.value[provider] = {
+    apiKey: aiConfig.value.apiKey,
+    model: aiConfig.value.model,
+    proxy: aiConfig.value.proxy,
+    baseUrl: aiConfig.value.baseUrl
+  }
+}
+
+// 从缓存加载配置
+const loadFromConfig = (provider: string) => {
+  const config = providerConfigs.value[provider]
+  if (config) {
+    aiConfig.value.apiKey = config.apiKey || ''
+    aiConfig.value.model = config.model || ''
+    aiConfig.value.proxy = config.proxy || ''
+    aiConfig.value.baseUrl = config.baseUrl || ''
+  } else {
+    // 如果没有缓存，清空输入框
+    aiConfig.value.apiKey = ''
+    aiConfig.value.model = ''
+    // proxy 尽量保留? 还是清空? 一般代理是通用的，但在这种设计下还是分开存吧，或者让用户自己决定
+    // 这里选择清空，保证隔离
+    aiConfig.value.proxy = ''
+    aiConfig.value.baseUrl = ''
+  }
+}
+
+// 切换提供商
 const onProviderChange = () => {
+  // 1. 保存旧提供商的配置
+  if (previousProvider.value) {
+    // 注意：此时 aiConfig.value 中的数据其实是旧的吗？
+    // 不，v-model 绑定的 apiKey 等字段还没变，但是 provider 已经是新的了
+    // 哎呀不对，v-model 是绑定在 input 上的。
+    // 当 select change 时，aiConfig.provider 变了。
+    // 但是 apiKey input 的 value 还是屏幕上显示的那些（也就是旧 provider 的 key）。
+    // 所以此时保存 previousProvider 对应的应该是当前的 input 值。
+    // 是的，因为 input 还没被重新赋值。
+    // 等等，Vue 的响应式更新...
+    // 如果我在 change 事件中执行，此时 dom 可能还没更新？或者数据只是刚变？
+    // 只要我还没调用 `loadFromConfig(newProvider)` 来覆盖 aiConfig 的其他字段，
+    // 那么 aiConfig.apiKey 依然是旧的值。
+    // 所以：保存旧值 -> 加载新值 -> 更新 previous
+
+    // 这里有个问题：因为 provider 已经变了，如果我调用 saveCurrentToConfig(previousProvider.value)，
+    // 它会读取 aiConfig.apiKey (旧值)，存入 providerConfigs[old]。这是对的。
+    saveCurrentToConfig(previousProvider.value)
+  }
+
+  // 2. 加载新提供商的配置
+  loadFromConfig(aiConfig.value.provider)
+
+  // 3. 更新 previous
+  previousProvider.value = aiConfig.value.provider
+
+  // 4. 清空模型列表
   modelList.value = []
-  aiConfig.value.model = ''
   modelError.value = ''
 }
 

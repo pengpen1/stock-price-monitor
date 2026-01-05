@@ -1,7 +1,7 @@
 {
   "name": "stock-monitor",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "股票监控助手 - 实时行情监控与AI分析",
   "author": "Stock Monitor Team",
   "repository": {

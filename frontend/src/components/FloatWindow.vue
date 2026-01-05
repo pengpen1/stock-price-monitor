@@ -8,7 +8,7 @@
 
     <!-- 股票列表 -->
     <div class="stock-list">
-      <div v-for="stock in displayStocks" :key="stock.code" class="stock-item">
+      <div v-for="stock in displayStocks" :key="stock.code" class="stock-item" @dblclick.stop="showStockDetail(stock)">
         <span class="stock-name">{{ stock.name }}</span>
         <span class="stock-price" :class="getPriceClass(stock.change_percent)">
           {{ stock.price }}
@@ -70,9 +70,27 @@ const handleMouseLeave = () => {
   isHovered.value = false
 }
 
+
 // 显示主窗口
 const showMainWindow = () => {
   (window as any).ipcRenderer?.send('show-main-window')
+}
+
+// 显示特定股票详情
+const showStockDetail = (stock: StockData | string) => {
+  let code = '';
+  if (typeof stock === 'string') {
+    code = stock;
+  } else if (stock && stock.code) {
+    code = stock.code;
+  }
+
+
+  if (code) {
+    (window as any).ipcRenderer?.send('show-stock-detail', code)
+  } else {
+    console.error('无法跳转：股票代码为空', stock);
+  }
 }
 
 // 关闭悬浮窗

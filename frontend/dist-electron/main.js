@@ -187,7 +187,7 @@ function createTray() {
   }
 }
 function createWindow() {
-  win = new BrowserWindow({
+  const browserWindow = new BrowserWindow({
     width: 1200,
     height: 750,
     minWidth: 1e3,
@@ -200,39 +200,41 @@ function createWindow() {
       contextIsolation: true
     }
   });
-  win.setMenuBarVisibility(false);
-  win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  win = browserWindow;
+  browserWindow.setMenuBarVisibility(false);
+  browserWindow.webContents.on("did-finish-load", () => {
+    browserWindow.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
   });
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
+    browserWindow.loadURL(VITE_DEV_SERVER_URL);
+    browserWindow.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(process.env.DIST || "", "index.html"));
+    browserWindow.loadFile(path.join(process.env.DIST || "", "index.html"));
   }
-  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+  browserWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
     console.log("窗口加载失败:", errorCode, errorDescription);
     if (errorCode === -102) {
       setTimeout(() => {
-        if (win && VITE_DEV_SERVER_URL) {
-          win.loadURL(VITE_DEV_SERVER_URL);
+        if (!browserWindow.isDestroyed() && VITE_DEV_SERVER_URL) {
+          browserWindow.loadURL(VITE_DEV_SERVER_URL);
         }
       }, 1e3);
     }
   });
-  win.on("minimize", () => {
-    win?.hide();
+  browserWindow.on("minimize", () => {
+    browserWindow.hide();
   });
-  win.on("close", (event) => {
+  browserWindow.on("close", (event) => {
     if (!appWithFlags.isQuitting) {
       event.preventDefault();
-      win?.hide();
+      browserWindow.hide();
     }
   });
-  win.webContents.setWindowOpenHandler((details) => {
+  browserWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
     return { action: "deny" };
   });
+  return browserWindow;
 }
 ipcMain.on("update-tray", (_event, text) => {
   if (tray) {
@@ -312,6 +314,19 @@ ipcMain.on("show-main-window", () => {
     win.focus();
   } else {
     createWindow();
+  }
+});
+ipcMain.on("show-stock-detail", (_event, code) => {
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+    win.webContents.send("navigate-to-stock", code);
+  } else {
+    const newWin = createWindow();
+    newWin.webContents.on("did-finish-load", () => {
+      newWin.webContents.send("navigate-to-stock", code);
+    });
   }
 });
 ipcMain.on("show-notification", (_event, data) => {

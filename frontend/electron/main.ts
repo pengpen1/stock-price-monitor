@@ -22,8 +22,8 @@ appWithFlags.isQuitting = false
 
 // 构建后的目录结构
 process.env.DIST = path.join(__dirname, '../dist')
-process.env.VITE_PUBLIC = app.isPackaged 
-  ? process.env.DIST 
+process.env.VITE_PUBLIC = app.isPackaged
+  ? process.env.DIST
   : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow | null = null
@@ -40,30 +40,30 @@ function startBackend() {
     console.log('开发模式，请手动启动后端服务')
     return
   }
-  
+
   // 打包后的后端 exe 路径
   const backendPath = path.join(process.resourcesPath, 'backend')
   const binaryName = process.platform === 'win32' ? 'stock-monitor-backend.exe' : 'stock-monitor-backend'
   const backendExe = path.join(backendPath, binaryName)
-  
+
   console.log('启动后端服务:', backendExe)
   console.log('工作目录:', backendPath)
-  
+
   // 启动后端 exe
   backendProcess = spawn(backendExe, [], {
     cwd: backendPath,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: false  // 显示控制台窗口方便调试，正式版可改为 true
   })
-  
+
   backendProcess.stdout?.on('data', (data) => {
     console.log(`[后端] ${data}`)
   })
-  
+
   backendProcess.stderr?.on('data', (data) => {
     console.error(`[后端错误] ${data}`)
   })
-  
+
   backendProcess.on('close', (code) => {
     console.log(`后端进程退出，代码: ${code}`)
     // 如果后端意外退出且应用未在退出中，尝试重启
@@ -72,7 +72,7 @@ function startBackend() {
       setTimeout(startBackend, 3000)
     }
   })
-  
+
   backendProcess.on('error', (err) => {
     console.error('启动后端失败:', err)
   })
@@ -106,9 +106,9 @@ function getTrayIconPath(): string {
 // 创建悬浮窗
 function createFloatWindow() {
   if (floatWin) return
-  
+
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
-  
+
   floatWin = new BrowserWindow({
     width: FLOAT_WIN_WIDTH,
     height: FLOAT_WIN_HEIGHT,
@@ -135,7 +135,7 @@ function createFloatWindow() {
   } else {
     floatWin.loadFile(path.join(process.env.DIST || '', 'index.html'), { hash: '/float' })
   }
-  
+
   // 检查 preload 是否加载成功
   floatWin.webContents.on('did-finish-load', () => {
     console.log('悬浮窗页面加载完成')
@@ -154,13 +154,13 @@ function createFloatWindow() {
   // 拖拽结束后检测吸边
   floatWin.on('moved', () => {
     if (!floatWin) return
-    
+
     const [x, y] = floatWin.getPosition()
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
-    
+
     let newX = x
     let newY = y
-    
+
     // 左边吸边
     if (x < EDGE_THRESHOLD) {
       newX = EDGE_MARGIN
@@ -177,7 +177,7 @@ function createFloatWindow() {
     if (y + FLOAT_WIN_HEIGHT > screenHeight - EDGE_THRESHOLD) {
       newY = screenHeight - FLOAT_WIN_HEIGHT - EDGE_MARGIN
     }
-    
+
     // 如果位置有变化，执行吸边动画
     if (newX !== x || newY !== y) {
       floatWin.setPosition(newX, newY, true)
@@ -190,32 +190,32 @@ function createFloatWindow() {
 
   // 初始状态半透明
   floatWin.setOpacity(0.7)
-  
+
   console.log('悬浮窗创建成功')
 }
 
 // 创建托盘图标
 function createTray() {
   if (tray) return
-  
+
   const iconPath = getTrayIconPath()
   console.log('创建托盘图标，路径:', iconPath)
-  
+
   try {
     const trayIcon = nativeImage.createFromPath(iconPath)
-    
+
     if (trayIcon.isEmpty()) {
       console.error('托盘图标加载失败')
       return
     }
-    
+
     tray = new Tray(trayIcon)
-    
+
     // 创建托盘右键菜单
     const contextMenu = Menu.buildFromTemplate([
       { label: '显示主窗口', click: () => win?.show() },
-      { 
-        label: '显示悬浮窗', 
+      {
+        label: '显示悬浮窗',
         click: () => {
           if (floatWin) {
             floatWin.show()
@@ -225,18 +225,18 @@ function createTray() {
         }
       },
       { type: 'separator' },
-      { 
-        label: '退出', 
+      {
+        label: '退出',
         click: () => {
           appWithFlags.isQuitting = true
           app.quit()
         }
       }
     ])
-    
+
     tray.setToolTip('股票监控助手')
     tray.setContextMenu(contextMenu)
-    
+
     // 单击托盘图标显示/隐藏主窗口
     tray.on('click', () => {
       if (win) {
@@ -248,15 +248,15 @@ function createTray() {
         }
       }
     })
-    
+
     console.log('托盘图标创建成功')
   } catch (error) {
     console.error('创建托盘图标失败:', error)
   }
 }
 
-function createWindow() {
-  win = new BrowserWindow({
+function createWindow(): BrowserWindow {
+  const browserWindow = new BrowserWindow({
     width: 1200,
     height: 750,
     minWidth: 1000,
@@ -270,47 +270,52 @@ function createWindow() {
     },
   })
 
-  win.setMenuBarVisibility(false)
+  // 更新全局 win 引用
+  win = browserWindow
 
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  browserWindow.setMenuBarVisibility(false)
+
+  browserWindow.webContents.on('did-finish-load', () => {
+    browserWindow.webContents.send('main-process-message', (new Date).toLocaleString())
   })
 
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
+    browserWindow.loadURL(VITE_DEV_SERVER_URL)
+    browserWindow.webContents.openDevTools()
   } else {
-    win.loadFile(path.join(process.env.DIST || '', 'index.html'))
+    browserWindow.loadFile(path.join(process.env.DIST || '', 'index.html'))
   }
 
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+  browserWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     console.log('窗口加载失败:', errorCode, errorDescription)
     if (errorCode === -102) {
       setTimeout(() => {
-        if (win && VITE_DEV_SERVER_URL) {
-          win.loadURL(VITE_DEV_SERVER_URL)
+        if (!browserWindow.isDestroyed() && VITE_DEV_SERVER_URL) {
+          browserWindow.loadURL(VITE_DEV_SERVER_URL)
         }
       }, 1000)
     }
   })
 
   // 最小化时隐藏到托盘
-  win.on('minimize', () => {
-    win?.hide()
+  browserWindow.on('minimize', () => {
+    browserWindow.hide()
   })
 
   // 关闭按钮点击时隐藏到托盘
-  win.on('close', (event: Electron.Event) => {
+  browserWindow.on('close', (event: Electron.Event) => {
     if (!appWithFlags.isQuitting) {
       event.preventDefault()
-      win?.hide()
+      browserWindow.hide()
     }
   })
 
-  win.webContents.setWindowOpenHandler((details) => {
+  browserWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
+
+  return browserWindow
 }
 
 // IPC: 更新托盘提示文本
@@ -321,9 +326,9 @@ ipcMain.on('update-tray', (_event, text: string) => {
 })
 
 // IPC: 更新托盘图标（绘制 K 线柱状图）
-ipcMain.on('update-tray-icon', (_event, data: { 
-  change: string; 
-  price: string; 
+ipcMain.on('update-tray-icon', (_event, data: {
+  change: string;
+  price: string;
   name: string;
   open?: string;
   high?: string;
@@ -331,40 +336,40 @@ ipcMain.on('update-tray-icon', (_event, data: {
   pre_close?: string;
 }) => {
   if (!tray) return
-  
+
   try {
     const change = parseFloat(data.change)
     const isUp = change >= 0
     const sign = isUp ? '+' : ''
-    
+
     const size = 16
     // BGRA 格式（Windows 使用 BGRA）
     const pixels = Buffer.alloc(size * size * 4)
-    
+
     // 颜色定义 (BGRA 格式)
     const bgColor = { b: 40, g: 40, r: 40, a: 255 }      // 深灰背景
     const upColor = { b: 79, g: 77, r: 255, a: 255 }     // 红色（涨）
     const downColor = { b: 26, g: 196, r: 82, a: 255 }   // 绿色（跌）
     const barColor = isUp ? upColor : downColor
-    
+
     // 计算柱状图高度（基于涨跌幅，最大 10%）
     const maxChange = 10
     const absChange = Math.min(Math.abs(change), maxChange)
     const barHeight = Math.max(2, Math.round((absChange / maxChange) * (size - 4)))
-    
+
     // 绘制像素
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const offset = (y * size + x) * 4
-        
+
         // 默认背景色
         let color = bgColor
-        
+
         // 绘制柱状图（居中，宽度 8px）
         const barWidth = 8
         const barLeft = (size - barWidth) / 2
         const barRight = barLeft + barWidth
-        
+
         if (x >= barLeft && x < barRight) {
           if (isUp) {
             // 涨：从底部向上
@@ -379,27 +384,27 @@ ipcMain.on('update-tray-icon', (_event, data: {
             }
           }
         }
-        
+
         // 绘制中线（昨收位置）
         if (y === Math.floor(size / 2) && x >= 1 && x < size - 1) {
           color = { b: 100, g: 100, r: 100, a: 255 } // 灰色中线
         }
-        
+
         pixels[offset] = color.b
         pixels[offset + 1] = color.g
         pixels[offset + 2] = color.r
         pixels[offset + 3] = color.a
       }
     }
-    
+
     const icon = nativeImage.createFromBuffer(pixels, {
       width: size,
       height: size,
     })
-    
+
     tray.setImage(icon)
     tray.setToolTip(`${data.name}: ${data.price} (${sign}${change.toFixed(2)}%)`)
-    
+
   } catch (e) {
     console.error('更新托盘图标失败:', e)
   }
@@ -433,6 +438,23 @@ ipcMain.on('show-main-window', () => {
   }
 })
 
+// IPC: 显示股票详情
+ipcMain.on('show-stock-detail', (_event, code: string) => {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    if (!win.isVisible()) win.show()
+    win.focus()
+    // 发送消息给渲染进程导航
+    win.webContents.send('navigate-to-stock', code)
+  } else {
+    const newWin = createWindow()
+    // 等待窗口创建完成后发送导航消息
+    newWin.webContents.on('did-finish-load', () => {
+      newWin.webContents.send('navigate-to-stock', code)
+    })
+  }
+})
+
 // IPC: 发送系统通知
 ipcMain.on('show-notification', (_event, data: { title: string; body: string }) => {
   if (Notification.isSupported()) {
@@ -441,7 +463,7 @@ ipcMain.on('show-notification', (_event, data: { title: string; body: string }) 
       body: data.body,
       icon: getTrayIconPath(),
     })
-    
+
     // 点击通知时显示主窗口
     notification.on('click', () => {
       if (win) {
@@ -449,7 +471,7 @@ ipcMain.on('show-notification', (_event, data: { title: string; body: string }) 
         win.focus()
       }
     })
-    
+
     notification.show()
     console.log('系统通知已发送:', data.title)
   }
@@ -487,10 +509,10 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   console.log('应用启动，用户数据目录:', userDataPath)
-  
+
   // 启动后端服务（仅打包后生效）
   startBackend()
-  
+
   createTray()
   createWindow()
   createFloatWindow()  // 启动时自动创建悬浮窗

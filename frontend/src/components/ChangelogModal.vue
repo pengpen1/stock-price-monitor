@@ -1,8 +1,10 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" @click.self="close">
+  <div v-if="visible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
+    @click.self="close">
     <div class="bg-white rounded-xl shadow-2xl w-[500px] max-h-[80vh] flex flex-col overflow-hidden">
       <!-- 头部 -->
-      <div class="flex justify-between items-center p-4 border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600">
+      <div
+        class="flex justify-between items-center p-4 border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600">
         <div class="flex items-center gap-2">
           <span class="text-2xl">📋</span>
           <h3 class="text-lg font-semibold text-white">更新日志</h3>
@@ -29,7 +31,7 @@
         <div class="relative">
           <!-- 时间线竖线 -->
           <div class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-slate-200"></div>
-          
+
           <div class="space-y-6">
             <div v-for="version in changelog" :key="version.version" class="relative pl-6">
               <!-- 时间线圆点 -->
@@ -39,7 +41,8 @@
                 <span class="ml-2 text-xs text-slate-400">{{ version.date }}</span>
               </div>
               <ul class="space-y-1.5">
-                <li v-for="(item, idx) in version.changes" :key="idx" class="flex items-start gap-2 text-sm text-slate-600">
+                <li v-for="(item, idx) in version.changes" :key="idx"
+                  class="flex items-start gap-2 text-sm text-slate-600">
                   <span :class="getTypeClass(item.type)">{{ getTypeIcon(item.type) }}</span>
                   <span>{{ item.text }}</span>
                 </li>
@@ -66,11 +69,25 @@ defineProps<{
 
 const emit = defineEmits(['update:visible'])
 
-const currentVersion = '1.2.0'
-const releaseDate = '2025-12-24'
+const currentVersion = '1.2.1'
+const releaseDate = '2026-01-05'
 
 // 更新日志数据
 const changelog = ref([
+  {
+    version: '1.2.1',
+    date: '2026-01-05',
+    changes: [
+      { type: 'feature', text: '模型配置缓存：支持保存不同提供商的 API Key，切换时无需重新输入' },
+      { type: 'feature', text: '国产模型支持：新增 DeepSeek、Kimi、通义千问、豆包、智谱GLM' },
+      { type: 'feature', text: '国外模型支持：新增 xAI Grok 模型' },
+      { type: 'feature', text: '悬浮窗交互升级：双击悬浮窗显示主界面，双击股票直接打开详情页' },
+      { type: 'improve', text: '架构重构：优化项目结构，提升代码可维护性' },
+      { type: 'fix', text: '修复换手率数据误差问题 (如 11.80% 显示为 1180%)' },
+      { type: 'fix', text: '修复 Mac 系统下后端启动和悬浮窗残留问题' },
+      { type: 'fix', text: '支持自定义 OpenAI 兼容接口地址' },
+    ]
+  },
   {
     version: '1.2.0',
     date: '2025-12-24',
