@@ -4,12 +4,12 @@
   交易笔记管理，支持 AI 提取交易记录
 -->
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import NotesPage from "@/components/NotesPage.vue";
+import { useRouter } from "vue-router"
+import NotesPage from "@/components/NotesPage.vue"
 
-const router = useRouter();
+const router = useRouter()
 
-const goBack = () => router.back();
+const goBack = () => router.back()
 </script>
 
 <template>

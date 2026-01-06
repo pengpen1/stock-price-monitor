@@ -11,9 +11,12 @@
     "build": "node -e \"require('child_process').execSync(process.platform === 'win32' ? 'scripts\\\\build-all.bat' : 'bash scripts/build-all.sh', {stdio: 'inherit'})\"",
     "build:win": "cd frontend && npm run build:win",
     "build:mac": "cd frontend && npm run build:mac",
-    "build:linux": "cd frontend && npm run build:linux"
+    "build:linux": "cd frontend && npm run build:linux",
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-tailwindcss": "^0.7.2"
   }
 }

@@ -4,12 +4,12 @@
   统一查看和管理所有股票的交易记录
 -->
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import TradeJournalPage from "@/components/TradeJournalPage.vue";
+import { useRouter } from "vue-router"
+import TradeJournalPage from "@/components/TradeJournalPage.vue"
 
-const router = useRouter();
+const router = useRouter()
 
-const goBack = () => router.back();
+const goBack = () => router.back()
 </script>
 
 <template>

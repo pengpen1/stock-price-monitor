@@ -1,5 +1,5 @@
-import path from "node:path";
+import path from "node:path"
 
 export function getTrayIconPath(): string {
-  return path.join(process.env.VITE_PUBLIC || "", "stock.ico");
+  return path.join(process.env.VITE_PUBLIC || "", "stock.ico")
 }

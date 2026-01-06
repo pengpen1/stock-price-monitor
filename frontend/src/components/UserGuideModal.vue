@@ -1,15 +1,15 @@
 <template>
   <div
     v-if="visible"
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     @click.self="close"
   >
     <div
-      class="bg-white rounded-xl shadow-2xl w-[600px] max-h-[85vh] flex flex-col overflow-hidden"
+      class="flex max-h-[85vh] w-[600px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
     >
       <!-- 头部 -->
       <div
-        class="flex justify-between items-center p-4 border-b border-slate-100 bg-gradient-to-r from-emerald-500 to-teal-500"
+        class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-500 to-teal-500 p-4"
       >
         <div class="flex items-center gap-2">
           <span class="text-2xl">📖</span>
@@ -17,7 +17,7 @@
         </div>
         <button
           @click="close"
-          class="text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
+          class="rounded p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,7 @@
 
       <!-- 目录导航 -->
       <div
-        class="flex bg-slate-50 px-4 gap-1 border-b border-slate-200"
+        class="flex gap-1 border-b border-slate-200 bg-slate-50 px-4"
         style="height: 80px; overflow: hidden"
       >
         <button
@@ -47,10 +47,10 @@
           @click="activeSection = section.id"
           :class="
             activeSection === section.id
-              ? 'text-emerald-600 border-emerald-500'
-              : 'text-slate-500 hover:text-slate-700 border-transparent'
+              ? 'border-emerald-500 text-emerald-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
           "
-          class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px"
+          class="-mb-px border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors"
         >
           {{ section.title }}
         </button>
@@ -62,13 +62,11 @@
       </div>
 
       <!-- 底部 -->
-      <div
-        class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center"
-      >
+      <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 p-4">
         <p class="text-xs text-slate-400">如有问题，欢迎反馈 💬</p>
         <button
           @click="close"
-          class="px-4 py-1.5 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors"
+          class="rounded-lg bg-emerald-500 px-4 py-1.5 text-sm text-white transition-colors hover:bg-emerald-600"
         >
           我知道了
         </button>
@@ -78,16 +76,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { marked } from "marked";
+import { ref, computed } from "vue"
+import { marked } from "marked"
 
 defineProps<{
-  visible: boolean;
-}>();
+  visible: boolean
+}>()
 
-const emit = defineEmits(["update:visible"]);
+const emit = defineEmits(["update:visible"])
 
-const activeSection = ref("quickstart");
+const activeSection = ref("quickstart")
 
 const sections = [
   { id: "quickstart", title: "快速开始" },
@@ -95,7 +93,7 @@ const sections = [
   { id: "alerts", title: "预警设置" },
   { id: "ai", title: "AI 分析" },
   { id: "settings", title: "系统设置" },
-];
+]
 
 const guideContent: Record<string, string> = {
   quickstart: `
@@ -240,15 +238,15 @@ AI 会分析以下数据并给出建议：
 - 右键托盘图标：显示菜单
 - 托盘图标会根据重点关注股票涨跌变色
 `,
-};
+}
 
 const renderedContent = computed(() => {
-  return marked.parse(guideContent[activeSection.value] || "");
-});
+  return marked.parse(guideContent[activeSection.value] || "")
+})
 
 const close = () => {
-  emit("update:visible", false);
-};
+  emit("update:visible", false)
+}
 </script>
 
 <style scoped>

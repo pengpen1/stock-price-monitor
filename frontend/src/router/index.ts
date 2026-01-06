@@ -2,11 +2,7 @@
  * Vue Router 路由配置
  * 定义应用的所有路由规则和导航守卫
  */
-import {
-  createRouter,
-  createWebHashHistory,
-  type RouteRecordRaw,
-} from "vue-router";
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router"
 
 // 路由配置
 const routes: RouteRecordRaw[] = [
@@ -54,17 +50,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/views/FloatView.vue"),
     meta: { title: "悬浮窗" },
   },
-];
+]
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
-});
+})
 
 // 路由守卫 - 设置页面标题
 router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || "股票监控助手"}`;
-  next();
-});
+  document.title = `${to.meta.title || "股票监控助手"}`
+  next()
+})
 
-export default router;
+export default router

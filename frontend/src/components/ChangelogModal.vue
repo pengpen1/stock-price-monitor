@@ -1,17 +1,37 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
-    @click.self="close">
-    <div class="bg-white rounded-xl shadow-2xl w-[500px] max-h-[80vh] flex flex-col overflow-hidden">
+  <div
+    v-if="visible"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    @click.self="close"
+  >
+    <div
+      class="flex max-h-[80vh] w-[500px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+    >
       <!-- 头部 -->
       <div
-        class="flex justify-between items-center p-4 border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600">
+        class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600 p-4"
+      >
         <div class="flex items-center gap-2">
           <span class="text-2xl">📋</span>
           <h3 class="text-lg font-semibold text-white">更新日志</h3>
         </div>
-        <button @click="close" class="text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <button
+          @click="close"
+          class="rounded p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -19,9 +39,9 @@
       <!-- 内容 -->
       <div class="flex-1 overflow-auto p-6">
         <!-- 当前版本 -->
-        <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">当前版本</span>
+        <div class="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white">当前版本</span>
             <span class="text-lg font-bold text-blue-600">V{{ currentVersion }}</span>
           </div>
           <p class="text-sm text-slate-500">发布日期: {{ releaseDate }}</p>
@@ -30,19 +50,24 @@
         <!-- 版本列表 -->
         <div class="relative">
           <!-- 时间线竖线 -->
-          <div class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-slate-200"></div>
+          <div class="absolute top-2 bottom-2 left-[7px] w-0.5 bg-slate-200"></div>
 
           <div class="space-y-6">
             <div v-for="version in changelog" :key="version.version" class="relative pl-6">
               <!-- 时间线圆点 -->
-              <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-white border-2 border-blue-500 z-10"></div>
+              <div
+                class="absolute top-1 left-0 z-10 h-4 w-4 rounded-full border-2 border-blue-500 bg-white"
+              ></div>
               <div class="mb-2">
                 <span class="text-base font-semibold text-slate-800">V{{ version.version }}</span>
                 <span class="ml-2 text-xs text-slate-400">{{ version.date }}</span>
               </div>
               <ul class="space-y-1.5">
-                <li v-for="(item, idx) in version.changes" :key="idx"
-                  class="flex items-start gap-2 text-sm text-slate-600">
+                <li
+                  v-for="(item, idx) in version.changes"
+                  :key="idx"
+                  class="flex items-start gap-2 text-sm text-slate-600"
+                >
                   <span :class="getTypeClass(item.type)">{{ getTypeIcon(item.type) }}</span>
                   <span>{{ item.text }}</span>
                 </li>
@@ -53,7 +78,7 @@
       </div>
 
       <!-- 底部 -->
-      <div class="p-4 border-t border-slate-100 bg-slate-50 text-center">
+      <div class="border-t border-slate-100 bg-slate-50 p-4 text-center">
         <p class="text-xs text-slate-400">感谢使用股票监控助手 ❤️</p>
       </div>
     </div>
@@ -61,136 +86,171 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from "vue"
 
 defineProps<{
   visible: boolean
 }>()
 
-const emit = defineEmits(['update:visible'])
+const emit = defineEmits(["update:visible"])
 
-const currentVersion = '1.2.1'
-const releaseDate = '2026-01-05'
+const currentVersion = "1.2.1"
+const releaseDate = "2026-01-05"
 
 // 更新日志数据
 const changelog = ref([
   {
-    version: '1.2.1',
-    date: '2026-01-05',
+    version: "1.2.1",
+    date: "2026-01-05",
     changes: [
-      { type: 'feature', text: '模型配置缓存：支持保存不同提供商的 API Key，切换时无需重新输入' },
-      { type: 'feature', text: '国产模型支持：新增 DeepSeek、Kimi、通义千问、豆包、智谱GLM' },
-      { type: 'feature', text: '国外模型支持：新增 xAI Grok 模型' },
-      { type: 'feature', text: '悬浮窗交互升级：双击悬浮窗显示主界面，双击股票直接打开详情页' },
-      { type: 'improve', text: '架构重构：优化项目结构，提升代码可维护性' },
-      { type: 'fix', text: '修复换手率数据误差问题 (如 11.80% 显示为 1180%)' },
-      { type: 'fix', text: '修复 Mac 系统下后端启动和悬浮窗残留问题' },
-      { type: 'fix', text: '支持自定义 OpenAI 兼容接口地址' },
-    ]
+      {
+        type: "feature",
+        text: "模型配置缓存：支持保存不同提供商的 API Key，切换时无需重新输入",
+      },
+      {
+        type: "feature",
+        text: "国产模型支持：新增 DeepSeek、Kimi、通义千问、豆包、智谱GLM",
+      },
+      { type: "feature", text: "国外模型支持：新增 xAI Grok 模型" },
+      {
+        type: "feature",
+        text: "悬浮窗交互升级：双击悬浮窗显示主界面，双击股票直接打开详情页",
+      },
+      { type: "improve", text: "架构重构：优化项目结构，提升代码可维护性" },
+      { type: "fix", text: "修复换手率数据误差问题 (如 11.80% 显示为 1180%)" },
+      { type: "fix", text: "修复 Mac 系统下后端启动和悬浮窗残留问题" },
+      { type: "fix", text: "支持自定义 OpenAI 兼容接口地址" },
+    ],
   },
   {
-    version: '1.2.0',
-    date: '2025-12-24',
+    version: "1.2.0",
+    date: "2025-12-24",
     changes: [
-      { type: 'feature', text: '笔记功能，支持 Markdown 格式编辑和预览' },
-      { type: 'feature', text: '笔记自动保存，3秒无操作自动保存' },
-      { type: 'feature', text: 'AI 智能转换，从笔记中自动提取交易记录' },
-      { type: 'feature', text: '快捷键支持，Ctrl+S 快速保存笔记' },
-      { type: 'improve', text: '心态选项新增"不安"类型' },
-    ]
+      { type: "feature", text: "笔记功能，支持 Markdown 格式编辑和预览" },
+      { type: "feature", text: "笔记自动保存，3秒无操作自动保存" },
+      { type: "feature", text: "AI 智能转换，从笔记中自动提取交易记录" },
+      { type: "feature", text: "快捷键支持，Ctrl+S 快速保存笔记" },
+      { type: "improve", text: '心态选项新增"不安"类型' },
+    ],
   },
   {
-    version: '1.1.0',
-    date: '2025-12-22',
+    version: "1.1.0",
+    date: "2025-12-22",
     changes: [
-      { type: 'feature', text: '实盘模拟：基于历史K线数据进行模拟交易练习' },
-      { type: 'feature', text: '支持自定义模拟天数（7-50天）和初始资金' },
-      { type: 'feature', text: '模拟交易支持买入/卖出/跳过操作，需填写理由' },
-      { type: 'feature', text: '模拟过程中可查看当日分时图辅助决策' },
-      { type: 'feature', text: 'AI 智能评分，对模拟交易进行综合评价和建议' },
-      { type: 'feature', text: '模拟记录管理，支持暂停/继续/查看历史记录' },
-      { type: 'feature', text: '交易日志页面：统一查看和管理所有股票的交易记录' },
-      { type: 'feature', text: '交易风格分析：分析心态与分级对胜率的影响' },
-      { type: 'feature', text: '交易记录新增心态和分级字段' },
-      { type: 'feature', text: '交易记录导出/导入 Markdown 格式' },
-      { type: 'improve', text: '详情页新增实盘模拟入口' },
-      { type: 'improve', text: '交易记录弹窗新增扩大按钮，可跳转日志页面' },
-    ]
+      { type: "feature", text: "实盘模拟：基于历史K线数据进行模拟交易练习" },
+      { type: "feature", text: "支持自定义模拟天数（7-50天）和初始资金" },
+      { type: "feature", text: "模拟交易支持买入/卖出/跳过操作，需填写理由" },
+      { type: "feature", text: "模拟过程中可查看当日分时图辅助决策" },
+      { type: "feature", text: "AI 智能评分，对模拟交易进行综合评价和建议" },
+      { type: "feature", text: "模拟记录管理，支持暂停/继续/查看历史记录" },
+      {
+        type: "feature",
+        text: "交易日志页面：统一查看和管理所有股票的交易记录",
+      },
+      { type: "feature", text: "交易风格分析：分析心态与分级对胜率的影响" },
+      { type: "feature", text: "交易记录新增心态和分级字段" },
+      { type: "feature", text: "交易记录导出/导入 Markdown 格式" },
+      { type: "improve", text: "详情页新增实盘模拟入口" },
+      { type: "improve", text: "交易记录弹窗新增扩大按钮，可跳转日志页面" },
+    ],
   },
   {
-    version: '1.0.3',
-    date: '2025-12-15',
+    version: "1.0.3",
+    date: "2025-12-15",
     changes: [
-      { type: 'feature', text: '交易记录功能，支持记录买入/卖出/做T操作及原因' },
-      { type: 'feature', text: 'K 线图交易标记，直观展示历史操作点位' },
-      { type: 'feature', text: 'AI 分析自动记录，支持查看历史分析和信号' },
-      { type: 'feature', text: 'AI 结构化输出，自动提取看涨/谨慎/看跌信号' },
-      { type: 'feature', text: '精准分析自动计算持仓成本和数量' },
-      { type: 'feature', text: '精准分析趋势预测图，展示未来5日价格走势' },
-      { type: 'improve', text: '精准分析新增技术面数据：换手率、量比、振幅、均线' },
-      { type: 'improve', text: '精准分析新增基本面数据：市盈率、市净率、市值、行业' },
-      { type: 'improve', text: '精准分析新增市场情绪：北向资金、融资融券、龙虎榜' },
-      { type: 'improve', text: '操作列下拉菜单，界面更简洁' },
-    ]
+      {
+        type: "feature",
+        text: "交易记录功能，支持记录买入/卖出/做T操作及原因",
+      },
+      { type: "feature", text: "K 线图交易标记，直观展示历史操作点位" },
+      { type: "feature", text: "AI 分析自动记录，支持查看历史分析和信号" },
+      { type: "feature", text: "AI 结构化输出，自动提取看涨/谨慎/看跌信号" },
+      { type: "feature", text: "精准分析自动计算持仓成本和数量" },
+      { type: "feature", text: "精准分析趋势预测图，展示未来5日价格走势" },
+      {
+        type: "improve",
+        text: "精准分析新增技术面数据：换手率、量比、振幅、均线",
+      },
+      {
+        type: "improve",
+        text: "精准分析新增基本面数据：市盈率、市净率、市值、行业",
+      },
+      {
+        type: "improve",
+        text: "精准分析新增市场情绪：北向资金、融资融券、龙虎榜",
+      },
+      { type: "improve", text: "操作列下拉菜单，界面更简洁" },
+    ],
   },
   {
-    version: '1.0.2',
-    date: '2025-12-12',
+    version: "1.0.2",
+    date: "2025-12-12",
     changes: [
-      { type: 'feature', text: '大盘指数分时图，直观查看大盘走势' },
-      { type: 'feature', text: 'AI 分析 Prompt 完整展示，支持查看和复制' },
-      { type: 'feature', text: '配置导入导出功能，轻松备份和迁移设置' },
-    ]
+      { type: "feature", text: "大盘指数分时图，直观查看大盘走势" },
+      { type: "feature", text: "AI 分析 Prompt 完整展示，支持查看和复制" },
+      { type: "feature", text: "配置导入导出功能，轻松备份和迁移设置" },
+    ],
   },
   {
-    version: '1.0.1',
-    date: '2025-12-11',
+    version: "1.0.1",
+    date: "2025-12-11",
     changes: [
-      { type: 'feature', text: 'AI 智能分析功能，支持 Gemini/GPT/Claude 多模型' },
-      { type: 'feature', text: '代理配置支持，解决国内访问问题' },
-      { type: 'feature', text: '成交量数据增强，价量配合分析' },
-      { type: 'feature', text: '更新日志和使用手册页面' },
-      { type: 'fix', text: '修复大盘指数数据显示问题' },
-      { type: 'fix', text: '修复 AI 配置持久化问题' },
-      { type: 'improve', text: '优化错误提示，更友好的用户体验' },
-      { type: 'improve', text: 'AI 请求添加重试机制' },
-    ]
+      {
+        type: "feature",
+        text: "AI 智能分析功能，支持 Gemini/GPT/Claude 多模型",
+      },
+      { type: "feature", text: "代理配置支持，解决国内访问问题" },
+      { type: "feature", text: "成交量数据增强，价量配合分析" },
+      { type: "feature", text: "更新日志和使用手册页面" },
+      { type: "fix", text: "修复大盘指数数据显示问题" },
+      { type: "fix", text: "修复 AI 配置持久化问题" },
+      { type: "improve", text: "优化错误提示，更友好的用户体验" },
+      { type: "improve", text: "AI 请求添加重试机制" },
+    ],
   },
   {
-    version: '1.0.0',
-    date: '2025-12-10',
+    version: "1.0.0",
+    date: "2025-12-10",
     changes: [
-      { type: 'feature', text: '股票实时行情监控' },
-      { type: 'feature', text: '大盘指数展示（上证、深证、创业板、沪深300）' },
-      { type: 'feature', text: '股票分组管理和拖拽排序' },
-      { type: 'feature', text: '价格预警功能（止盈/止损/涨跌幅）' },
-      { type: 'feature', text: '系统托盘和悬浮窗' },
-      { type: 'feature', text: '股票详情页（分时图、K线图、资金流向）' },
-      { type: 'feature', text: 'PushPlus 和钉钉推送通知' },
-      { type: 'feature', text: '中英文双语支持' },
-    ]
-  }
+      { type: "feature", text: "股票实时行情监控" },
+      { type: "feature", text: "大盘指数展示（上证、深证、创业板、沪深300）" },
+      { type: "feature", text: "股票分组管理和拖拽排序" },
+      { type: "feature", text: "价格预警功能（止盈/止损/涨跌幅）" },
+      { type: "feature", text: "系统托盘和悬浮窗" },
+      { type: "feature", text: "股票详情页（分时图、K线图、资金流向）" },
+      { type: "feature", text: "PushPlus 和钉钉推送通知" },
+      { type: "feature", text: "中英文双语支持" },
+    ],
+  },
 ])
 
 const close = () => {
-  emit('update:visible', false)
+  emit("update:visible", false)
 }
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case 'feature': return '✨'
-    case 'fix': return '🐛'
-    case 'improve': return '⚡'
-    default: return '📌'
+    case "feature":
+      return "✨"
+    case "fix":
+      return "🐛"
+    case "improve":
+      return "⚡"
+    default:
+      return "📌"
   }
 }
 
 const getTypeClass = (type: string) => {
   switch (type) {
-    case 'feature': return 'text-green-500'
-    case 'fix': return 'text-red-500'
-    case 'improve': return 'text-blue-500'
-    default: return 'text-slate-500'
+    case "feature":
+      return "text-green-500"
+    case "fix":
+      return "text-red-500"
+    case "improve":
+      return "text-blue-500"
+    default:
+      return "text-slate-500"
   }
 }
 </script>

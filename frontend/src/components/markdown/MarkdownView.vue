@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import CodeBlockRenderer from "./CodeBlockRenderer.vue";
-import MermaidRenderer from "./MermaidRenderer.vue";
-import { createMarkdownRenderer } from "vue-mdr";
+import CodeBlockRenderer from "./CodeBlockRenderer.vue"
+import MermaidRenderer from "./MermaidRenderer.vue"
+import { createMarkdownRenderer } from "vue-mdr"
 
 const VueMarkdownRenderer = createMarkdownRenderer({
   codeBlock: {
@@ -10,13 +10,13 @@ const VueMarkdownRenderer = createMarkdownRenderer({
   mermaid: {
     renderer: MermaidRenderer,
   },
-});
+})
 
 const { source, theme = "dark" } = defineProps<{
-  source: string;
-  theme?: "light" | "dark";
-  stream?: boolean;
-}>();
+  source: string
+  theme?: "light" | "dark"
+  stream?: boolean
+}>()
 </script>
 
 <template>

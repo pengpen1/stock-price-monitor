@@ -4,24 +4,41 @@
   显示主力、大单、散户资金净流入
 -->
 <template>
-  <div v-if="moneyFlowData.length > 0" class="bg-white rounded-xl shadow-sm p-4">
-    <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ $t('detail.money_flow') }}</h3>
+  <div v-if="moneyFlowData.length > 0" class="rounded-xl bg-white p-4 shadow-sm">
+    <h3 class="mb-4 text-sm font-semibold text-slate-700">
+      {{ $t("detail.money_flow") }}
+    </h3>
     <div class="grid grid-cols-3 gap-4">
       <div class="text-center">
-        <div class="text-xs text-slate-500">{{ $t('detail.main_net_flow') }}</div>
-        <div class="text-lg font-semibold" :class="mainNetFlow >= 0 ? 'text-red-500' : 'text-green-500'">
+        <div class="text-xs text-slate-500">
+          {{ $t("detail.main_net_flow") }}
+        </div>
+        <div
+          class="text-lg font-semibold"
+          :class="mainNetFlow >= 0 ? 'text-red-500' : 'text-green-500'"
+        >
           {{ formatMoney(mainNetFlow) }}
         </div>
       </div>
       <div class="text-center">
-        <div class="text-xs text-slate-500">{{ $t('detail.big_net_flow') }}</div>
-        <div class="text-lg font-semibold" :class="bigNetFlow >= 0 ? 'text-red-500' : 'text-green-500'">
+        <div class="text-xs text-slate-500">
+          {{ $t("detail.big_net_flow") }}
+        </div>
+        <div
+          class="text-lg font-semibold"
+          :class="bigNetFlow >= 0 ? 'text-red-500' : 'text-green-500'"
+        >
           {{ formatMoney(bigNetFlow) }}
         </div>
       </div>
       <div class="text-center">
-        <div class="text-xs text-slate-500">{{ $t('detail.small_net_flow') }}</div>
-        <div class="text-lg font-semibold" :class="smallNetFlow >= 0 ? 'text-red-500' : 'text-green-500'">
+        <div class="text-xs text-slate-500">
+          {{ $t("detail.small_net_flow") }}
+        </div>
+        <div
+          class="text-lg font-semibold"
+          :class="smallNetFlow >= 0 ? 'text-red-500' : 'text-green-500'"
+        >
           {{ formatMoney(smallNetFlow) }}
         </div>
       </div>
@@ -30,8 +47,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed } from "vue"
+import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 
@@ -59,8 +76,8 @@ const smallNetFlow = computed(() => {
 })
 
 const formatMoney = (val: number) => {
-  if (Math.abs(val) >= 100000000) return (val / 100000000).toFixed(2) + t('detail.yi')
-  if (Math.abs(val) >= 10000) return (val / 10000).toFixed(2) + t('detail.wan')
+  if (Math.abs(val) >= 100000000) return (val / 100000000).toFixed(2) + t("detail.yi")
+  if (Math.abs(val) >= 10000) return (val / 10000).toFixed(2) + t("detail.wan")
   return val.toFixed(2)
 }
 </script>

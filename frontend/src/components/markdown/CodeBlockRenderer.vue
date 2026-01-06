@@ -1,61 +1,47 @@
 <script setup lang="ts">
-import { ref, computed, VNode, watchEffect } from "vue";
+import { ref, computed, VNode, watchEffect } from "vue"
 
 const props = defineProps<{
-  highlightVnode: VNode;
-  language: string;
-}>();
+  highlightVnode: VNode
+  language: string
+}>()
 
-const copied = ref(false);
-const contentRef = ref<HTMLElement>();
+const copied = ref(false)
+const contentRef = ref<HTMLElement>()
 
 function copyHandle() {
-  if (!contentRef.value) return;
-  navigator.clipboard.writeText(contentRef.value.textContent || "");
-  copied.value = true;
-  setTimeout(() => (copied.value = false), 2000);
+  if (!contentRef.value) return
+  navigator.clipboard.writeText(contentRef.value.textContent || "")
+  copied.value = true
+  setTimeout(() => (copied.value = false), 2000)
 }
 watchEffect(() => {
-  console.log(props.language, props.highlightVnode);
-});
-const langLabel = computed(() => props.language?.toUpperCase() || "TEXT");
+  console.log(props.language, props.highlightVnode)
+})
+const langLabel = computed(() => props.language?.toUpperCase() || "TEXT")
 </script>
 
 <template>
-  <div
-    class="relative my-4 w-0 min-w-full overflow-hidden rounded-lg text-sm shadow bg-[#171717]"
-  >
+  <div class="relative my-4 w-0 min-w-full overflow-hidden rounded-lg bg-[#171717] text-sm shadow">
     <!-- 顶部标签行 -->
-    <div
-      class="flex items-center justify-between bg-[#2f2f2f] p-2 text-[#cdcdcd]"
-    >
-      <span class="text-xs uppercase tracking-wider text-gray-400">
+    <div class="flex items-center justify-between bg-[#2f2f2f] p-2 text-[#cdcdcd]">
+      <span class="text-xs tracking-wider text-gray-400 uppercase">
         {{ langLabel }}
       </span>
 
       <div class="relative cursor-pointer p-1" @click="copyHandle">
         <template v-if="copied">
-          <div class="absolute -left-16 top-5 z-10">
-            <div class="rounded px-2 py-1 text-sm text-green-500 bg-black">
-              Copied!
-            </div>
+          <div class="absolute top-5 -left-16 z-10">
+            <div class="rounded bg-black px-2 py-1 text-sm text-green-500">Copied!</div>
           </div>
           <!-- ✅ Check Icon SVG -->
-          <svg
-            class="h-4 w-4 text-gray-300"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
+          <svg class="h-4 w-4 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
           </svg>
         </template>
         <template v-else>
           <!-- ✅ Copy Icon SVG -->
-          <svg
-            class="h-4 w-4 text-gray-300"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
+          <svg class="h-4 w-4 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
             <path
               d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 18H8V7h11v16z"
             />
@@ -67,7 +53,7 @@ const langLabel = computed(() => props.language?.toUpperCase() || "TEXT");
     <!-- 高亮代码区域 -->
     <div
       ref="contentRef"
-      class="not-prose overflow-auto px-3 py-2 font-mono leading-relaxed text-gray-100 bg-[#171717]"
+      class="not-prose overflow-auto bg-[#171717] px-3 py-2 font-mono leading-relaxed text-gray-100"
     >
       <component :is="highlightVnode" />
     </div>
