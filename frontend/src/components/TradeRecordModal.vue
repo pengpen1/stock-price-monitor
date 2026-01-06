@@ -1,30 +1,55 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" @click.self="close">
-    <div class="bg-white rounded-xl shadow-2xl w-[450px] max-h-[80vh] flex flex-col overflow-hidden">
+  <div
+    v-if="visible"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    @click.self="close"
+  >
+    <div
+      class="flex max-h-[80vh] w-[450px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+    >
       <!-- 头部 -->
-      <div class="flex justify-between items-center p-4 border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600">
-        <h3 class="text-lg font-semibold text-white">{{ isEdit ? '编辑交易记录' : '添加交易记录' }}</h3>
-        <button @click="close" class="text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      <div
+        class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-500 to-blue-600 p-4"
+      >
+        <h3 class="text-lg font-semibold text-white">
+          {{ isEdit ? "编辑交易记录" : "添加交易记录" }}
+        </h3>
+        <button
+          @click="close"
+          class="rounded p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
 
       <!-- 表单内容 -->
-      <div class="flex-1 overflow-auto p-6 space-y-4">
+      <div class="flex-1 space-y-4 overflow-auto p-6">
         <!-- 交易类型 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">交易类型</label>
+          <label class="mb-2 block text-sm font-medium text-slate-700">交易类型</label>
           <div class="flex gap-2">
-            <button 
-              v-for="t in tradeTypes" :key="t.value"
+            <button
+              v-for="t in tradeTypes"
+              :key="t.value"
               @click="form.type = t.value"
               :class="[
-                'flex-1 py-2 px-4 rounded-lg font-medium transition-all',
-                form.type === t.value 
-                  ? t.activeClass 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                'flex-1 rounded-lg px-4 py-2 font-medium transition-all',
+                form.type === t.value
+                  ? t.activeClass
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
               ]"
             >
               {{ t.label }}
@@ -34,45 +59,45 @@
 
         <!-- 买入/卖出价格（非做T模式） -->
         <div v-if="form.type !== 'T'">
-          <label class="block text-sm font-medium text-slate-700 mb-2">成交价格</label>
+          <label class="mb-2 block text-sm font-medium text-slate-700">成交价格</label>
           <div class="relative">
-            <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
-            <input 
-              v-model.number="form.price" 
-              type="number" 
+            <span class="absolute top-2.5 left-3 text-slate-400">¥</span>
+            <input
+              v-model.number="form.price"
+              type="number"
               step="0.01"
-              class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              class="w-full rounded-lg border border-slate-200 py-2.5 pr-3 pl-8 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
-            >
+            />
           </div>
         </div>
 
         <!-- 做T模式：买入和卖出价格 -->
         <div v-if="form.type === 'T'" class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-2">买入价格</label>
+            <label class="mb-2 block text-sm font-medium text-slate-700">买入价格</label>
             <div class="relative">
-              <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
-              <input 
-                v-model.number="form.buy_price" 
-                type="number" 
+              <span class="absolute top-2.5 left-3 text-slate-400">¥</span>
+              <input
+                v-model.number="form.buy_price"
+                type="number"
                 step="0.01"
-                class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                class="w-full rounded-lg border border-slate-200 py-2.5 pr-3 pl-8 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
-              >
+              />
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-2">卖出价格</label>
+            <label class="mb-2 block text-sm font-medium text-slate-700">卖出价格</label>
             <div class="relative">
-              <span class="absolute left-3 top-2.5 text-slate-400">¥</span>
-              <input 
-                v-model.number="form.sell_price" 
-                type="number" 
+              <span class="absolute top-2.5 left-3 text-slate-400">¥</span>
+              <input
+                v-model.number="form.sell_price"
+                type="number"
                 step="0.01"
-                class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                class="w-full rounded-lg border border-slate-200 py-2.5 pr-3 pl-8 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
-              >
+              />
             </div>
           </div>
         </div>
@@ -80,54 +105,55 @@
         <!-- 做T盈亏提示 -->
         <div v-if="form.type === 'T' && form.buy_price > 0 && form.sell_price > 0" class="text-sm">
           <span :class="tProfit >= 0 ? 'text-red-500' : 'text-green-500'">
-            做T {{ tProfit >= 0 ? '盈利' : '亏损' }}: ¥{{ Math.abs(tProfit).toFixed(2) }}/手
+            做T {{ tProfit >= 0 ? "盈利" : "亏损" }}: ¥{{ Math.abs(tProfit).toFixed(2) }}/手
           </span>
         </div>
 
         <!-- 手数 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">手数（1手=100股）</label>
-          <input 
-            v-model.number="form.quantity" 
+          <label class="mb-2 block text-sm font-medium text-slate-700">手数（1手=100股）</label>
+          <input
+            v-model.number="form.quantity"
             type="number"
-            class="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2.5 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
             placeholder="0"
-          >
+          />
         </div>
 
         <!-- 交易时间 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">交易时间</label>
-          <input 
-            v-model="form.trade_time" 
+          <label class="mb-2 block text-sm font-medium text-slate-700">交易时间</label>
+          <input
+            v-model="form.trade_time"
             type="datetime-local"
-            class="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
+            class="w-full rounded-lg border border-slate-200 px-3 py-2.5 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         <!-- 操作原因 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">操作原因</label>
-          <textarea 
-            v-model="form.reason" 
+          <label class="mb-2 block text-sm font-medium text-slate-700">操作原因</label>
+          <textarea
+            v-model="form.reason"
             rows="3"
-            class="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+            class="w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
             placeholder="记录你的交易逻辑和原因..."
           ></textarea>
         </div>
 
         <!-- 当前心态 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">当前心态</label>
+          <label class="mb-2 block text-sm font-medium text-slate-700">当前心态</label>
           <div class="grid grid-cols-5 gap-2">
-            <button 
-              v-for="m in moodOptions" :key="m.value"
+            <button
+              v-for="m in moodOptions"
+              :key="m.value"
               @click="form.mood = m.value"
               :class="[
-                'py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1',
-                form.mood === m.value 
-                  ? m.activeClass 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                'flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-all',
+                form.mood === m.value
+                  ? m.activeClass
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
               ]"
             >
               <span class="text-base">{{ m.emoji }}</span>
@@ -138,16 +164,17 @@
 
         <!-- 交易分级 -->
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">交易分级</label>
+          <label class="mb-2 block text-sm font-medium text-slate-700">交易分级</label>
           <div class="space-y-2">
-            <button 
-              v-for="l in levelOptions" :key="l.value"
+            <button
+              v-for="l in levelOptions"
+              :key="l.value"
               @click="form.level = l.value"
               :class="[
-                'w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-left flex items-center gap-3',
-                form.level === l.value 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                'flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-all',
+                form.level === l.value
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
               ]"
             >
               <span class="text-lg">{{ l.stars }}</span>
@@ -161,16 +188,19 @@
       </div>
 
       <!-- 底部按钮 -->
-      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-        <button @click="close" class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+      <div class="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-4">
+        <button
+          @click="close"
+          class="rounded-lg px-4 py-2 text-slate-600 transition-colors hover:bg-slate-200"
+        >
           取消
         </button>
-        <button 
-          @click="submit" 
+        <button
+          @click="submit"
           :disabled="!isValid || loading"
-          class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="rounded-lg bg-blue-500 px-6 py-2 text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {{ loading ? '保存中...' : '保存' }}
+          {{ loading ? "保存中..." : "保存" }}
         </button>
       </div>
     </div>
@@ -178,8 +208,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { addTradeRecord, updateTradeRecord, type TradeRecord } from '../api'
+import { ref, computed, watch } from "vue"
+import { addTradeRecord, updateTradeRecord, type TradeRecord } from "../api"
 
 const props = defineProps<{
   visible: boolean
@@ -187,49 +217,83 @@ const props = defineProps<{
   editRecord?: TradeRecord | null
 }>()
 
-const emit = defineEmits(['update:visible', 'saved'])
+const emit = defineEmits(["update:visible", "saved"])
 
 const loading = ref(false)
 const isEdit = computed(() => !!props.editRecord)
 
-const tradeTypes: { value: 'B' | 'S' | 'T'; label: string; activeClass: string }[] = [
-  { value: 'B', label: '买入 B', activeClass: 'bg-red-500 text-white' },
-  { value: 'S', label: '卖出 S', activeClass: 'bg-green-500 text-white' },
-  { value: 'T', label: '做T', activeClass: 'bg-blue-500 text-white' },
+const tradeTypes: {
+  value: "B" | "S" | "T"
+  label: string
+  activeClass: string
+}[] = [
+  { value: "B", label: "买入 B", activeClass: "bg-red-500 text-white" },
+  { value: "S", label: "卖出 S", activeClass: "bg-green-500 text-white" },
+  { value: "T", label: "做T", activeClass: "bg-blue-500 text-white" },
 ]
 
 // 心态选项
 const moodOptions = [
-  { value: 'calm', label: '平静', emoji: '😌', activeClass: 'bg-blue-500 text-white' },
-  { value: 'anxious', label: '焦虑', emoji: '😰', activeClass: 'bg-yellow-500 text-white' },
-  { value: 'uneasy', label: '不安', emoji: '😟', activeClass: 'bg-amber-500 text-white' },
-  { value: 'panic', label: '慌张', emoji: '😱', activeClass: 'bg-orange-500 text-white' },
-  { value: 'fear', label: '恐惧', emoji: '😨', activeClass: 'bg-red-500 text-white' },
-  { value: 'excited', label: '亢奋', emoji: '🤩', activeClass: 'bg-purple-500 text-white' },
+  {
+    value: "calm",
+    label: "平静",
+    emoji: "😌",
+    activeClass: "bg-blue-500 text-white",
+  },
+  {
+    value: "anxious",
+    label: "焦虑",
+    emoji: "😰",
+    activeClass: "bg-yellow-500 text-white",
+  },
+  {
+    value: "uneasy",
+    label: "不安",
+    emoji: "😟",
+    activeClass: "bg-amber-500 text-white",
+  },
+  {
+    value: "panic",
+    label: "慌张",
+    emoji: "😱",
+    activeClass: "bg-orange-500 text-white",
+  },
+  {
+    value: "fear",
+    label: "恐惧",
+    emoji: "😨",
+    activeClass: "bg-red-500 text-white",
+  },
+  {
+    value: "excited",
+    label: "亢奋",
+    emoji: "🤩",
+    activeClass: "bg-purple-500 text-white",
+  },
 ]
 
 // 分级选项
 const levelOptions = [
-  { value: 1, label: '一级交易', stars: '⭐', desc: '85%以上盈利概率' },
-  { value: 2, label: '二级交易', stars: '⭐⭐', desc: '70%以上盈利概率' },
-  { value: 3, label: '三级交易', stars: '⭐⭐⭐', desc: '凑热闹局' },
+  { value: 1, label: "一级交易", stars: "⭐", desc: "85%以上盈利概率" },
+  { value: 2, label: "二级交易", stars: "⭐⭐", desc: "70%以上盈利概率" },
+  { value: 3, label: "三级交易", stars: "⭐⭐⭐", desc: "凑热闹局" },
 ]
 
 const form = ref({
-  type: 'B' as 'B' | 'S' | 'T',
+  type: "B" as "B" | "S" | "T",
   price: 0,
-  buy_price: 0,  // 做T买入价
+  buy_price: 0, // 做T买入价
   sell_price: 0, // 做T卖出价
   quantity: 1,
-  trade_time: '',
-  reason: '',
-  mood: 'calm' as string,
-  level: 2 as number
+  trade_time: "",
+  reason: "",
+  mood: "calm" as string,
+  level: 2 as number,
 })
 
 // 做T盈亏计算（每手）
 const tProfit = computed(() => {
-  if (form.value.type !== 'T') return 0
+  if (form.value.type !== "T") return 0
   return (form.value.sell_price - form.value.buy_price) * 100
 })
 
@@ -237,8 +301,8 @@ const tProfit = computed(() => {
 const isValid = computed(() => {
   const hasReason = form.value.reason.trim()
   const hasQuantity = form.value.quantity > 0
-  
-  if (form.value.type === 'T') {
+
+  if (form.value.type === "T") {
     // 做T需要买入和卖出价格都填写
     return form.value.buy_price > 0 && form.value.sell_price > 0 && hasQuantity && hasReason
   }
@@ -246,90 +310,97 @@ const isValid = computed(() => {
 })
 
 // 监听弹窗打开，初始化表单
-watch(() => props.visible, (val) => {
-  if (val) {
-    if (props.editRecord) {
-      // 编辑模式 - 解析做T的买卖价格
-      const record = props.editRecord
-      let buyPrice = 0, sellPrice = 0
-      if (record.type === 'T' && record.reason) {
-        // 尝试从reason中解析买卖价格（格式：买入:xx 卖出:xx ...）
-        const buyMatch = record.reason.match(/买入[:：](\d+\.?\d*)/)
-        const sellMatch = record.reason.match(/卖出[:：](\d+\.?\d*)/)
-        if (buyMatch) buyPrice = parseFloat(buyMatch[1])
-        if (sellMatch) sellPrice = parseFloat(sellMatch[1])
-      }
-      form.value = {
-        type: record.type,
-        price: record.price,
-        buy_price: buyPrice || record.price,
-        sell_price: sellPrice || record.price,
-        quantity: record.quantity,
-        trade_time: record.trade_time.replace(' ', 'T'),
-        reason: record.reason,
-        mood: record.mood || 'calm',
-        level: record.level || 2
-      }
-    } else {
-      // 新增模式
-      const now = new Date()
-      const timeStr = now.toISOString().slice(0, 16)
-      form.value = {
-        type: 'B',
-        price: 0,
-        buy_price: 0,
-        sell_price: 0,
-        quantity: 1,
-        trade_time: timeStr,
-        reason: '',
-        mood: 'calm',
-        level: 2
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      if (props.editRecord) {
+        // 编辑模式 - 解析做T的买卖价格
+        const record = props.editRecord
+        let buyPrice = 0,
+          sellPrice = 0
+        if (record.type === "T" && record.reason) {
+          // 尝试从reason中解析买卖价格（格式：买入:xx 卖出:xx ...）
+          const buyMatch = record.reason.match(/买入[:：](\d+\.?\d*)/)
+          const sellMatch = record.reason.match(/卖出[:：](\d+\.?\d*)/)
+          if (buyMatch) buyPrice = parseFloat(buyMatch[1])
+          if (sellMatch) sellPrice = parseFloat(sellMatch[1])
+        }
+        form.value = {
+          type: record.type,
+          price: record.price,
+          buy_price: buyPrice || record.price,
+          sell_price: sellPrice || record.price,
+          quantity: record.quantity,
+          trade_time: record.trade_time.replace(" ", "T"),
+          reason: record.reason,
+          mood: record.mood || "calm",
+          level: record.level || 2,
+        }
+      } else {
+        // 新增模式
+        const now = new Date()
+        const timeStr = now.toISOString().slice(0, 16)
+        form.value = {
+          type: "B",
+          price: 0,
+          buy_price: 0,
+          sell_price: 0,
+          quantity: 1,
+          trade_time: timeStr,
+          reason: "",
+          mood: "calm",
+          level: 2,
+        }
       }
     }
-  }
-})
+  },
+)
 
 const close = () => {
-  emit('update:visible', false)
+  emit("update:visible", false)
 }
 
 const submit = async () => {
   if (!isValid.value) return
-  
+
   loading.value = true
   try {
     // 构建提交数据
     let price = form.value.price
     let reason = form.value.reason
-    
+
     // 做T模式：价格取平均值，reason前面加上买卖价格信息
-    if (form.value.type === 'T') {
+    if (form.value.type === "T") {
       price = (form.value.buy_price + form.value.sell_price) / 2
-      const profitInfo = tProfit.value >= 0 ? `盈利${tProfit.value.toFixed(2)}元/手` : `亏损${Math.abs(tProfit.value).toFixed(2)}元/手`
+      const profitInfo =
+        tProfit.value >= 0
+          ? `盈利${tProfit.value.toFixed(2)}元/手`
+          : `亏损${Math.abs(tProfit.value).toFixed(2)}元/手`
       reason = `买入:${form.value.buy_price} 卖出:${form.value.sell_price} ${profitInfo} | ${form.value.reason}`
     }
-    
+
     const data = {
       type: form.value.type,
       price,
       quantity: form.value.quantity,
       reason,
       stock_code: props.stockCode,
-      trade_time: form.value.trade_time.replace('T', ' '),
+      trade_time: form.value.trade_time.replace("T", " "),
       mood: form.value.mood,
-      level: form.value.level
+      level: form.value.level,
     }
-    
+
     if (isEdit.value && props.editRecord) {
       await updateTradeRecord(props.editRecord.id, data)
     } else {
       await addTradeRecord(data)
     }
-    
-    emit('saved')
+
+    emit("saved")
     close()
   } catch (e) {
-    console.error('保存交易记录失败:', e)
+    console.error("保存交易记录失败:", e)
   } finally {
     loading.value = false
   }

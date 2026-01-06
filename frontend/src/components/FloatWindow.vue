@@ -1,5 +1,10 @@
 <template>
-  <div class="float-container" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave" @dblclick="showMainWindow">
+  <div
+    class="float-container"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+    @dblclick="showMainWindow"
+  >
     <!-- 标题栏（可拖拽区域） -->
     <div class="title-bar">
       <span class="title">stock price monitor</span>
@@ -8,7 +13,12 @@
 
     <!-- 股票列表 -->
     <div class="stock-list">
-      <div v-for="stock in displayStocks" :key="stock.code" class="stock-item" @dblclick.stop="showStockDetail(stock)">
+      <div
+        v-for="stock in displayStocks"
+        :key="stock.code"
+        class="stock-item"
+        @dblclick.stop="showStockDetail(stock)"
+      >
         <span class="stock-name">{{ stock.name }}</span>
         <span class="stock-price" :class="getPriceClass(stock.change_percent)">
           {{ stock.price }}
@@ -19,16 +29,14 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="displayStocks.length === 0" class="empty-state">
-        暂无监控股票
-      </div>
+      <div v-if="displayStocks.length === 0" class="empty-state">暂无监控股票</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { getStocks } from '../api'
+import { ref, onMounted, onUnmounted, computed } from "vue"
+import { getStocks } from "../api"
 
 interface StockData {
   code: string
@@ -47,17 +55,17 @@ const displayStocks = computed(() => stockData.value.slice(0, 3))
 // 获取涨跌样式类
 const getPriceClass = (changePercent: string) => {
   const value = parseFloat(changePercent)
-  if (value > 0) return 'up'
-  if (value < 0) return 'down'
-  return ''
+  if (value > 0) return "up"
+  if (value < 0) return "down"
+  return ""
 }
 
 // 获取涨跌图标
 const getChangeIcon = (changePercent: string) => {
   const value = parseFloat(changePercent)
-  if (value > 0) return '↑'
-  if (value < 0) return '↓'
-  return ''
+  if (value > 0) return "↑"
+  if (value < 0) return "↓"
+  return ""
 }
 
 // 鼠标进入
@@ -70,36 +78,34 @@ const handleMouseLeave = () => {
   isHovered.value = false
 }
 
-
 // 显示主窗口
 const showMainWindow = () => {
-  (window as any).ipcRenderer?.send('show-main-window')
+  ;(window as any).ipcRenderer?.send("show-main-window")
 }
 
 // 显示特定股票详情
 const showStockDetail = (stock: StockData | string) => {
-  let code = '';
-  if (typeof stock === 'string') {
-    code = stock;
+  let code = ""
+  if (typeof stock === "string") {
+    code = stock
   } else if (stock && stock.code) {
-    code = stock.code;
+    code = stock.code
   }
 
-
   if (code) {
-    (window as any).ipcRenderer?.send('show-stock-detail', code)
+    ;(window as any).ipcRenderer?.send("show-stock-detail", code)
   } else {
-    console.error('无法跳转：股票代码为空', stock);
+    console.error("无法跳转：股票代码为空", stock)
   }
 }
 
 // 关闭悬浮窗
 const handleClose = () => {
-  console.log('点击关闭按钮')
+  console.log("点击关闭按钮")
   try {
-    window.ipcRendererApi.invoke('close-float-window')
+    window.ipcRendererApi.invoke("close-float-window")
   } catch (e) {
-    console.error('关闭悬浮窗失败:', e)
+    console.error("关闭悬浮窗失败:", e)
   }
 }
 
@@ -111,14 +117,15 @@ const fetchData = async () => {
 
     // 同时更新托盘提示
     if (stockData.value.length > 0) {
-      const summary = stockData.value.slice(0, 3)
-        .map(s => `${s.name}: ${s.price} (${s.change_percent}%)`)
-        .join('\n')
+      const summary = stockData.value
+        .slice(0, 3)
+        .map((s) => `${s.name}: ${s.price} (${s.change_percent}%)`)
+        .join("\n")
       // ;(window as any).ipcRenderer?.send('update-tray', summary)
-      window.ipcRendererApi.invoke('update-tray', summary)
+      window.ipcRendererApi.invoke("update-tray", summary)
     }
   } catch (error) {
-    console.error('获取股票数据失败:', error)
+    console.error("获取股票数据失败:", error)
   }
 }
 
@@ -140,7 +147,7 @@ onUnmounted(() => {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #fff;
 }
 

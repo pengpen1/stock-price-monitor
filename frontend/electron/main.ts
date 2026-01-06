@@ -1,8 +1,18 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, shell, nativeImage, screen, Notification } from 'electron'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { spawn, ChildProcess } from 'node:child_process'
-import { setupIpcMainHandle } from './ipc/setupIpcMainHandle'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Tray,
+  Menu,
+  shell,
+  nativeImage,
+  screen,
+  Notification,
+} from "electron"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import { spawn, ChildProcess } from "node:child_process"
+import { setupIpcMainHandle } from "./ipc/setupIpcMainHandle"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -15,77 +25,78 @@ if (!gotTheLock) {
 }
 
 // 用户数据目录（localStorage 会自动持久化到这里）
-const userDataPath = app.getPath('userData')
+const userDataPath = app.getPath("userData")
 
 // 使用类型转换来添加自定义属性，避免 TS 错误
 const appWithFlags = app as unknown as { isQuitting: boolean } & typeof app
 appWithFlags.isQuitting = false
 
 // 构建后的目录结构
-process.env.DIST = path.join(__dirname, '../dist')
+process.env.DIST = path.join(__dirname, "../dist")
 process.env.VITE_PUBLIC = app.isPackaged
   ? process.env.DIST
-  : path.join(process.env.DIST, '../public')
+  : path.join(process.env.DIST, "../public")
 
 let win: BrowserWindow | null = null
-let floatWin: BrowserWindow | null = null  // 悬浮窗
+let floatWin: BrowserWindow | null = null // 悬浮窗
 let tray: Tray | null = null
-let backendProcess: ChildProcess | null = null  // 后端进程
+let backendProcess: ChildProcess | null = null // 后端进程
 
-const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"]
 
 // 启动后端服务
 function startBackend() {
   if (!app.isPackaged) {
     // 开发模式下不自动启动后端
-    console.log('开发模式，请手动启动后端服务')
+    console.log("开发模式，请手动启动后端服务")
     return
   }
 
   // 打包后的后端 exe 路径
-  const backendPath = path.join(process.resourcesPath, 'backend')
-  const binaryName = process.platform === 'win32' ? 'stock-monitor-backend.exe' : 'stock-monitor-backend'
+  const backendPath = path.join(process.resourcesPath, "backend")
+  const binaryName =
+    process.platform === "win32" ? "stock-monitor-backend.exe" : "stock-monitor-backend"
   const backendExe = path.join(backendPath, binaryName)
 
-  console.log('启动后端服务:', backendExe)
-  console.log('工作目录:', backendPath)
+  console.log("启动后端服务:", backendExe)
+  console.log("工作目录:", backendPath)
 
   // 启动后端 exe
   backendProcess = spawn(backendExe, [], {
     cwd: backendPath,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: false  // 显示控制台窗口方便调试，正式版可改为 true
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: false, // 显示控制台窗口方便调试，正式版可改为 true
   })
 
-  backendProcess.stdout?.on('data', (data) => {
+  backendProcess.stdout?.on("data", (data) => {
     console.log(`[后端] ${data}`)
   })
 
-  backendProcess.stderr?.on('data', (data) => {
+  backendProcess.stderr?.on("data", (data) => {
     console.error(`[后端错误] ${data}`)
   })
 
-  backendProcess.on('close', (code) => {
+  backendProcess.on("close", (code) => {
     console.log(`后端进程退出，代码: ${code}`)
     // 如果后端意外退出且应用未在退出中，尝试重启
     if (code !== 0 && !appWithFlags.isQuitting) {
-      console.log('后端意外退出，3秒后尝试重启...')
+      console.log("后端意外退出，3秒后尝试重启...")
       setTimeout(startBackend, 3000)
     }
   })
 
-  backendProcess.on('error', (err) => {
-    console.error('启动后端失败:', err)
+  backendProcess.on("error", (err) => {
+    console.error("启动后端失败:", err)
   })
 }
 
 // 停止后端服务
 function stopBackend() {
   if (backendProcess) {
-    console.log('停止后端服务...')
+    console.log("停止后端服务...")
     // Windows 下需要强制终止
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'])
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(backendProcess.pid), "/f", "/t"])
     } else {
       backendProcess.kill()
     }
@@ -96,12 +107,12 @@ function stopBackend() {
 // 悬浮窗配置
 const FLOAT_WIN_WIDTH = 200
 const FLOAT_WIN_HEIGHT = 150
-const EDGE_MARGIN = 0  // 吸边时距离屏幕边缘的距离
-const EDGE_THRESHOLD = 20  // 触发吸边的阈值
+const EDGE_MARGIN = 0 // 吸边时距离屏幕边缘的距离
+const EDGE_THRESHOLD = 20 // 触发吸边的阈值
 
 // 获取托盘图标路径
 function getTrayIconPath(): string {
-  return path.join(process.env.VITE_PUBLIC || '', 'stock.ico')
+  return path.join(process.env.VITE_PUBLIC || "", "stock.ico")
 }
 
 // 创建悬浮窗
@@ -113,16 +124,16 @@ function createFloatWindow() {
   floatWin = new BrowserWindow({
     width: FLOAT_WIN_WIDTH,
     height: FLOAT_WIN_HEIGHT,
-    x: screenWidth - FLOAT_WIN_WIDTH - 20,  // 默认右下角
+    x: screenWidth - FLOAT_WIN_WIDTH - 20, // 默认右下角
     y: screenHeight - FLOAT_WIN_HEIGHT - 20,
-    frame: false,           // 无边框
-    transparent: true,      // 透明背景
-    alwaysOnTop: true,      // 始终置顶
-    skipTaskbar: true,      // 不在任务栏显示
-    resizable: false,       // 不可调整大小
-    hasShadow: false,       // 无阴影
+    frame: false, // 无边框
+    transparent: true, // 透明背景
+    alwaysOnTop: true, // 始终置顶
+    skipTaskbar: true, // 不在任务栏显示
+    resizable: false, // 不可调整大小
+    hasShadow: false, // 无阴影
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -135,26 +146,28 @@ function createFloatWindow() {
     // 开发模式下打开悬浮窗的 DevTools 用于调试
     // floatWin.webContents.openDevTools({ mode: 'detach' })
   } else {
-    floatWin.loadFile(path.join(process.env.DIST || '', 'index.html'), { hash: '/float' })
+    floatWin.loadFile(path.join(process.env.DIST || "", "index.html"), {
+      hash: "/float",
+    })
   }
 
   // 检查 preload 是否加载成功
-  floatWin.webContents.on('did-finish-load', () => {
-    console.log('悬浮窗页面加载完成')
+  floatWin.webContents.on("did-finish-load", () => {
+    console.log("悬浮窗页面加载完成")
   })
 
   // 鼠标进入时取消半透明
-  floatWin.on('focus', () => {
+  floatWin.on("focus", () => {
     floatWin?.setOpacity(1)
   })
 
   // 鼠标离开后变半透明
-  floatWin.on('blur', () => {
+  floatWin.on("blur", () => {
     floatWin?.setOpacity(0.7)
   })
 
   // 拖拽结束后检测吸边
-  floatWin.on('moved', () => {
+  floatWin.on("moved", () => {
     if (!floatWin) return
 
     const [x, y] = floatWin.getPosition()
@@ -186,14 +199,14 @@ function createFloatWindow() {
     }
   })
 
-  floatWin.on('closed', () => {
+  floatWin.on("closed", () => {
     floatWin = null
   })
 
   // 初始状态半透明
   floatWin.setOpacity(0.7)
 
-  console.log('悬浮窗创建成功')
+  console.log("悬浮窗创建成功")
 }
 
 // 创建托盘图标
@@ -201,13 +214,13 @@ function createTray() {
   if (tray) return
 
   const iconPath = getTrayIconPath()
-  console.log('创建托盘图标，路径:', iconPath)
+  console.log("创建托盘图标，路径:", iconPath)
 
   try {
     const trayIcon = nativeImage.createFromPath(iconPath)
 
     if (trayIcon.isEmpty()) {
-      console.error('托盘图标加载失败')
+      console.error("托盘图标加载失败")
       return
     }
 
@@ -215,32 +228,32 @@ function createTray() {
 
     // 创建托盘右键菜单
     const contextMenu = Menu.buildFromTemplate([
-      { label: '显示主窗口', click: () => win?.show() },
+      { label: "显示主窗口", click: () => win?.show() },
       {
-        label: '显示悬浮窗',
+        label: "显示悬浮窗",
         click: () => {
           if (floatWin) {
             floatWin.show()
           } else {
             createFloatWindow()
           }
-        }
+        },
       },
-      { type: 'separator' },
+      { type: "separator" },
       {
-        label: '退出',
+        label: "退出",
         click: () => {
           appWithFlags.isQuitting = true
           app.quit()
-        }
-      }
+        },
+      },
     ])
 
-    tray.setToolTip('股票监控助手')
+    tray.setToolTip("股票监控助手")
     tray.setContextMenu(contextMenu)
 
     // 单击托盘图标显示/隐藏主窗口
-    tray.on('click', () => {
+    tray.on("click", () => {
       if (win) {
         if (win.isVisible()) {
           win.hide()
@@ -251,9 +264,9 @@ function createTray() {
       }
     })
 
-    console.log('托盘图标创建成功')
+    console.log("托盘图标创建成功")
   } catch (error) {
-    console.error('创建托盘图标失败:', error)
+    console.error("创建托盘图标失败:", error)
   }
 }
 
@@ -265,7 +278,7 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     icon: getTrayIconPath(),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, "preload.mjs"),
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true,
@@ -277,19 +290,19 @@ function createWindow(): BrowserWindow {
 
   browserWindow.setMenuBarVisibility(false)
 
-  browserWindow.webContents.on('did-finish-load', () => {
-    browserWindow.webContents.send('main-process-message', (new Date).toLocaleString())
+  browserWindow.webContents.on("did-finish-load", () => {
+    browserWindow.webContents.send("main-process-message", new Date().toLocaleString())
   })
 
   if (VITE_DEV_SERVER_URL) {
     browserWindow.loadURL(VITE_DEV_SERVER_URL)
     browserWindow.webContents.openDevTools()
   } else {
-    browserWindow.loadFile(path.join(process.env.DIST || '', 'index.html'))
+    browserWindow.loadFile(path.join(process.env.DIST || "", "index.html"))
   }
 
-  browserWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    console.log('窗口加载失败:', errorCode, errorDescription)
+  browserWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+    console.log("窗口加载失败:", errorCode, errorDescription)
     if (errorCode === -102) {
       setTimeout(() => {
         if (!browserWindow.isDestroyed() && VITE_DEV_SERVER_URL) {
@@ -300,12 +313,12 @@ function createWindow(): BrowserWindow {
   })
 
   // 最小化时隐藏到托盘
-  browserWindow.on('minimize', () => {
+  browserWindow.on("minimize", () => {
     browserWindow.hide()
   })
 
   // 关闭按钮点击时隐藏到托盘
-  browserWindow.on('close', (event: Electron.Event) => {
+  browserWindow.on("close", (event: Electron.Event) => {
     if (!appWithFlags.isQuitting) {
       event.preventDefault()
       browserWindow.hide()
@@ -314,21 +327,20 @@ function createWindow(): BrowserWindow {
 
   browserWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
-    return { action: 'deny' }
+    return { action: "deny" }
   })
 
   return browserWindow
 }
 
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit()
   }
 })
 
 // 当第二个实例启动时，聚焦到已有窗口
-app.on('second-instance', () => {
+app.on("second-instance", () => {
   if (win) {
     if (win.isMinimized()) win.restore()
     if (!win.isVisible()) win.show()
@@ -336,12 +348,12 @@ app.on('second-instance', () => {
   }
 })
 
-app.on('before-quit', () => {
+app.on("before-quit", () => {
   appWithFlags.isQuitting = true
-  stopBackend()  // 退出前停止后端服务
+  stopBackend() // 退出前停止后端服务
 })
 
-app.on('activate', () => {
+app.on("activate", () => {
   if (win) {
     if (win.isMinimized()) win.restore()
     if (!win.isVisible()) win.show()
@@ -352,13 +364,13 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
-  console.log('应用启动，用户数据目录:', userDataPath)
+  console.log("应用启动，用户数据目录:", userDataPath)
 
   // 启动后端服务（仅打包后生效）
   startBackend()
 
   createTray()
   createWindow()
-  createFloatWindow()  // 启动时自动创建悬浮窗
-  setupIpcMainHandle({tray:tray!,floatWin:floatWin!,win:win!})
+  createFloatWindow() // 启动时自动创建悬浮窗
+  setupIpcMainHandle({ tray: tray!, floatWin: floatWin!, win: win! })
 })

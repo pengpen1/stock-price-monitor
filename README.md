@@ -48,12 +48,14 @@ English | [简体中文](./README.zh-CN.md)
 ## Features
 
 ### 📈 Real-time Monitoring
+
 - Real-time A-share market data (price, change%, volume, etc.)
 - Major index display (SSE, SZSE, ChiNext, CSI 300)
 - Stock grouping and drag-and-drop sorting
 - Desktop floating window for focused stocks
 
 ### 🤖 AI-Powered Analysis
+
 - Multi-model support: GPT / Claude / Gemini / DeepSeek / Kimi / Qwen / Doubao / GLM
 - Quick analysis: Fast judgment based on daily data
 - Precise analysis: Multi-dimensional analysis including technicals, fundamentals, capital flow
@@ -61,6 +63,7 @@ English | [简体中文](./README.zh-CN.md)
 - Structured output: Auto-extract bullish/cautious/bearish signals
 
 ### 📝 Trade Records & Notes
+
 - Record buy/sell/T+0 operations with reasons
 - K-line chart markers showing historical trade points
 - AI analysis history with signal tracking
@@ -69,6 +72,7 @@ English | [简体中文](./README.zh-CN.md)
 - AI-powered trade record extraction from notes
 
 ### 🎮 Paper Trading Simulation
+
 - Practice trading with historical data
 - Customizable simulation days (7-50) and initial capital
 - Time rewind: K-line only shows up to current simulation date
@@ -76,6 +80,7 @@ English | [简体中文](./README.zh-CN.md)
 - AI scoring and evaluation after completion
 
 ### 🔔 Alert System
+
 - Take-profit / Stop-loss price alerts
 - Price change percentage alerts
 - Push notifications via PushPlus (WeChat) and DingTalk
@@ -159,11 +164,11 @@ npm run build:linux
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Electron + Vue 3 + TypeScript + TailwindCSS + ECharts |
-| Backend | Python + FastAPI |
-| Data Source | Sina Finance, East Money |
+| Layer       | Technology                                            |
+| ----------- | ----------------------------------------------------- |
+| Frontend    | Electron + Vue 3 + TypeScript + TailwindCSS + ECharts |
+| Backend     | Python + FastAPI                                      |
+| Data Source | Sina Finance, East Money                              |
 
 ## Project Structure
 
@@ -190,12 +195,14 @@ stock-monitor/
 ### Adding Stocks
 
 Enter stock code in the following formats:
+
 - Numbers only: `600519` (auto-detect SH/SZ)
 - With prefix: `sh600519`, `sz000001`
 
 ### AI Configuration
 
 Configure in Settings page:
+
 - Select model provider
 - Enter API Key
 - Optional: Configure proxy

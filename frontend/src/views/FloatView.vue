@@ -4,7 +4,7 @@
   精简版股票监控界面
 -->
 <script setup lang="ts">
-import FloatWindow from "@/components/FloatWindow.vue";
+import FloatWindow from "@/components/FloatWindow.vue"
 </script>
 
 <template>
