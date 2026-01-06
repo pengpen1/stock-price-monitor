@@ -40,14 +40,25 @@ export default defineConfig({
     electron([
       {
         // 主进程入口
-        entry: 'electron/main.ts',
+        entry: "electron/main.ts",
+      },
+      {
+        vite: {
+          build: {
+            outDir: "dist-electron",
+            rollupOptions: {
+              input: "electron/preload.ts",
+              output: { entryFileNames: "preload.mjs" },
+            },
+          },
+        },
       },
     ]),
     renderer(),
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      "@": resolve(__dirname, "src"),
     },
   },
-})
+});

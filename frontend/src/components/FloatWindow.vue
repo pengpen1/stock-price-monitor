@@ -97,13 +97,7 @@ const showStockDetail = (stock: StockData | string) => {
 const handleClose = () => {
   console.log('点击关闭按钮')
   try {
-    const ipc = (window as any).ipcRenderer
-    if (ipc && ipc.send) {
-      ipc.send('close-float-window')
-      console.log('已发送关闭消息')
-    } else {
-      console.error('ipcRenderer 不可用')
-    }
+    window.ipcRendererApi.invoke('close-float-window')
   } catch (e) {
     console.error('关闭悬浮窗失败:', e)
   }
@@ -120,7 +114,8 @@ const fetchData = async () => {
       const summary = stockData.value.slice(0, 3)
         .map(s => `${s.name}: ${s.price} (${s.change_percent}%)`)
         .join('\n')
-        ; (window as any).ipcRenderer?.send('update-tray', summary)
+      // ;(window as any).ipcRenderer?.send('update-tray', summary)
+      window.ipcRendererApi.invoke('update-tray', summary)
     }
   } catch (error) {
     console.error('获取股票数据失败:', error)

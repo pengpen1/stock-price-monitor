@@ -5,7 +5,7 @@
     "lib": ["ESNext", "DOM"],
     "moduleResolution": "bundler",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "types": ["vite/client"],
+    "types": ["vite/client", "./types/global.d.ts"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
