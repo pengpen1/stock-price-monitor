@@ -7,7 +7,13 @@ const ipcMainApi = {
     ipcMain.handle(ch, (_e, data) => fn(data));
   },
   on(ch, fn) {
-    ipcMain.on(ch, (_e, data) => fn(data));
+    const handle = (_e, data) => {
+      fn(data);
+    };
+    ipcMain.on(ch, handle);
+    return () => {
+      ipcMain.off(ch, handle);
+    };
   },
   send(ch, ...data) {
     const windows = BrowserWindow.getAllWindows();
