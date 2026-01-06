@@ -258,7 +258,7 @@ export function useDashboard() {
         for (const alert of res.alerts) {
           const title = `📈 ${alert.name} 预警触发`
           const body = alert.messages.join('\n') + `\n当前价: ${alert.price}`;
-          (window as any).ipcRenderer?.showNotification(title, body)
+          window.ipcRendererApi.invoke('show-notification', {title,body})
         }
       }
     } catch (e) {
@@ -284,17 +284,17 @@ export function useDashboard() {
       const summary = stockData.value.slice(0, 3)
         .map(s => `${s.name}: ${s.price} (${s.change_percent}%)`)
         .join('\n');
-      (window as any).ipcRenderer?.send('update-tray', summary)
+      window.ipcRendererApi.invoke('update-tray', summary)
     }
   }
 
   const updateTrayIcon = (focusedData: any) => {
     if (focusedData) {
-      (window as any).ipcRenderer?.send('update-tray-icon', {
+      window.ipcRendererApi.invoke("update-tray-icon", {
         change: focusedData.change_percent,
         price: focusedData.price,
         name: focusedData.name,
-      })
+      });
     }
   }
 

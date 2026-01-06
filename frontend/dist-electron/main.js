@@ -1,7 +1,119 @@
-import { app, ipcMain, Notification, BrowserWindow, shell, nativeImage, Tray, Menu, screen } from "electron";
+import { BrowserWindow, ipcMain, nativeImage, Notification, app, shell, Tray, Menu, screen } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+const ipcMainApi = {
+  handle(ch, fn) {
+    ipcMain.handle(ch, (_e, data) => fn(data));
+  },
+  on(ch, fn) {
+    const handle = (_e, data) => {
+      fn(data);
+    };
+    ipcMain.on(ch, handle);
+    return () => {
+      ipcMain.off(ch, handle);
+    };
+  },
+  send(ch, ...data) {
+    const windows = BrowserWindow.getAllWindows();
+    for (const w of windows) {
+      w.webContents.send(ch, ...data);
+    }
+  }
+};
+function getTrayIconPath$1() {
+  return path.join(process.env.VITE_PUBLIC || "", "stock.ico");
+}
+function setupIpcMainHandle({ tray: tray2, floatWin: floatWin2, win: win2 }) {
+  ipcMainApi.handle("update-tray", (data) => {
+    if (tray2) {
+      tray2.setToolTip(data);
+    }
+  });
+  ipcMainApi.handle("update-tray-icon", (data) => {
+    if (!tray2) return;
+    try {
+      const change = parseFloat(data.change);
+      const isUp = change >= 0;
+      const sign = isUp ? "+" : "";
+      const size = 16;
+      const pixels = Buffer.alloc(size * size * 4);
+      const bgColor = { b: 40, g: 40, r: 40, a: 255 };
+      const upColor = { b: 79, g: 77, r: 255, a: 255 };
+      const downColor = { b: 26, g: 196, r: 82, a: 255 };
+      const barColor = isUp ? upColor : downColor;
+      const maxChange = 10;
+      const absChange = Math.min(Math.abs(change), maxChange);
+      const barHeight = Math.max(
+        2,
+        Math.round(absChange / maxChange * (size - 4))
+      );
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const offset = (y * size + x) * 4;
+          let color = bgColor;
+          const barWidth = 8;
+          const barLeft = (size - barWidth) / 2;
+          const barRight = barLeft + barWidth;
+          if (x >= barLeft && x < barRight) {
+            if (isUp) {
+              const barTop = size - 2 - barHeight;
+              if (y >= barTop && y < size - 2) {
+                color = barColor;
+              }
+            } else {
+              if (y >= 2 && y < 2 + barHeight) {
+                color = barColor;
+              }
+            }
+          }
+          if (y === Math.floor(size / 2) && x >= 1 && x < size - 1) {
+            color = { b: 100, g: 100, r: 100, a: 255 };
+          }
+          pixels[offset] = color.b;
+          pixels[offset + 1] = color.g;
+          pixels[offset + 2] = color.r;
+          pixels[offset + 3] = color.a;
+        }
+      }
+      const icon = nativeImage.createFromBuffer(pixels, {
+        width: size,
+        height: size
+      });
+      tray2.setImage(icon);
+      tray2.setToolTip(
+        `${data.name}: ${data.price} (${sign}${change.toFixed(2)}%)`
+      );
+    } catch (e) {
+      console.error("更新托盘图标失败:", e);
+    }
+  });
+  ipcMainApi.handle("close-float-window", () => {
+    console.log("收到关闭悬浮窗请求");
+    if (floatWin2 && !floatWin2.isDestroyed()) {
+      floatWin2.close();
+      console.log("悬浮窗已关闭");
+    }
+  });
+  ipcMainApi.handle("show-notification", (data) => {
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title: data.title,
+        body: data.body,
+        icon: getTrayIconPath$1()
+      });
+      notification.on("click", () => {
+        if (win2) {
+          win2.show();
+          win2.focus();
+        }
+      });
+      notification.show();
+      console.log("系统通知已发送:", data.title);
+    }
+  });
+}
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -90,9 +202,10 @@ function createFloatWindow() {
     hasShadow: false,
     // 无阴影
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.cjs"),
+      preload: path.join(__dirname$1, "preload.mjs"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     }
   });
   if (VITE_DEV_SERVER_URL) {
@@ -194,7 +307,7 @@ function createWindow() {
     minHeight: 600,
     icon: getTrayIconPath(),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.cjs"),
+      preload: path.join(__dirname$1, "preload.mjs"),
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true
@@ -236,116 +349,6 @@ function createWindow() {
   });
   return browserWindow;
 }
-ipcMain.on("update-tray", (_event, text) => {
-  if (tray) {
-    tray.setToolTip(text);
-  }
-});
-ipcMain.on("update-tray-icon", (_event, data) => {
-  if (!tray) return;
-  try {
-    const change = parseFloat(data.change);
-    const isUp = change >= 0;
-    const sign = isUp ? "+" : "";
-    const size = 16;
-    const pixels = Buffer.alloc(size * size * 4);
-    const bgColor = { b: 40, g: 40, r: 40, a: 255 };
-    const upColor = { b: 79, g: 77, r: 255, a: 255 };
-    const downColor = { b: 26, g: 196, r: 82, a: 255 };
-    const barColor = isUp ? upColor : downColor;
-    const maxChange = 10;
-    const absChange = Math.min(Math.abs(change), maxChange);
-    const barHeight = Math.max(2, Math.round(absChange / maxChange * (size - 4)));
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const offset = (y * size + x) * 4;
-        let color = bgColor;
-        const barWidth = 8;
-        const barLeft = (size - barWidth) / 2;
-        const barRight = barLeft + barWidth;
-        if (x >= barLeft && x < barRight) {
-          if (isUp) {
-            const barTop = size - 2 - barHeight;
-            if (y >= barTop && y < size - 2) {
-              color = barColor;
-            }
-          } else {
-            if (y >= 2 && y < 2 + barHeight) {
-              color = barColor;
-            }
-          }
-        }
-        if (y === Math.floor(size / 2) && x >= 1 && x < size - 1) {
-          color = { b: 100, g: 100, r: 100, a: 255 };
-        }
-        pixels[offset] = color.b;
-        pixels[offset + 1] = color.g;
-        pixels[offset + 2] = color.r;
-        pixels[offset + 3] = color.a;
-      }
-    }
-    const icon = nativeImage.createFromBuffer(pixels, {
-      width: size,
-      height: size
-    });
-    tray.setImage(icon);
-    tray.setToolTip(`${data.name}: ${data.price} (${sign}${change.toFixed(2)}%)`);
-  } catch (e) {
-    console.error("更新托盘图标失败:", e);
-  }
-});
-ipcMain.on("update-float-window", (_event, data) => {
-  if (floatWin && !floatWin.isDestroyed()) {
-    floatWin.webContents.send("stock-data-update", data);
-  }
-});
-ipcMain.on("close-float-window", () => {
-  console.log("收到关闭悬浮窗请求");
-  if (floatWin && !floatWin.isDestroyed()) {
-    floatWin.close();
-    floatWin = null;
-    console.log("悬浮窗已关闭");
-  }
-});
-ipcMain.on("show-main-window", () => {
-  if (win) {
-    if (win.isMinimized()) win.restore();
-    if (!win.isVisible()) win.show();
-    win.focus();
-  } else {
-    createWindow();
-  }
-});
-ipcMain.on("show-stock-detail", (_event, code) => {
-  if (win) {
-    if (win.isMinimized()) win.restore();
-    if (!win.isVisible()) win.show();
-    win.focus();
-    win.webContents.send("navigate-to-stock", code);
-  } else {
-    const newWin = createWindow();
-    newWin.webContents.on("did-finish-load", () => {
-      newWin.webContents.send("navigate-to-stock", code);
-    });
-  }
-});
-ipcMain.on("show-notification", (_event, data) => {
-  if (Notification.isSupported()) {
-    const notification = new Notification({
-      title: data.title,
-      body: data.body,
-      icon: getTrayIconPath()
-    });
-    notification.on("click", () => {
-      if (win) {
-        win.show();
-        win.focus();
-      }
-    });
-    notification.show();
-    console.log("系统通知已发送:", data.title);
-  }
-});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -377,4 +380,5 @@ app.whenReady().then(() => {
   createTray();
   createWindow();
   createFloatWindow();
+  setupIpcMainHandle({ tray, floatWin, win });
 });
